@@ -1,0 +1,322 @@
+Build a full-stack web application that functions as a persistent AI-assisted game development IDE. The system must allow importing existing projects and continuously editing them with an integrated AI coding agent. The app must support live gameplay preview and continuous iteration without regenerating the entire project.
+
+PRIMARY OBJECTIVE
+
+Create a browser-based development environment similar in workflow to Gambo.ai, but optimized for ongoing development of an existing game project. The environment must allow users to upload a project once and continue improving it indefinitely using an AI coding assistant.
+
+CORE FEATURES
+
+PROJECT DASHBOARD
+
+Create a main dashboard where users can:
+
+• create new project
+• upload project via zip file
+• rename projects
+• delete projects
+• duplicate projects
+• view project list
+• manage existing projects
+
+Projects should persist in storage.
+
+FILE IMPORT SYSTEM
+
+Implement robust file importing that correctly handles nested folder structures.
+
+Requirements:
+
+• drag and drop upload support
+• accept folders
+• accept zip files
+• accept individual files
+• correctly preserve nested folder hierarchy
+• correctly extract zip files including multi-level directory structures
+• preserve file paths exactly
+• allow multiple uploads into an existing project
+• prevent overwriting unless confirmed
+• allow merging new files into existing project
+
+FILE EXPLORER (FULLY FUNCTIONAL)
+
+Create a file explorer sidebar similar to VS Code.
+
+Required functionality:
+
+• drag and drop files into explorer
+• drag and drop folders into explorer
+• drag files between folders within explorer
+• move files between folders
+• create new file
+• create new folder (must work independently)
+• rename files
+• rename folders
+• delete files
+• delete folders
+• duplicate files
+• nested folders supported
+• display full file tree hierarchy
+• expand/collapse folders
+• context menu on right click
+• multi-file selection
+• visual feedback during drag operations
+
+Ensure that uploaded files are actually written to project storage.
+
+CODE EDITOR
+
+Implement tabbed code editor interface.
+
+Requirements:
+
+• syntax highlighting
+• multiple open tabs
+• auto-save changes
+• detect file changes
+• support HTML
+• support CSS
+• support JavaScript
+• support JSON
+• search across files
+• find and replace
+• display unsaved changes indicator
+
+Use Monaco Editor or similar.
+
+AI CODING AGENT
+
+Include integrated AI chat interface.
+
+AI must be able to:
+
+• read project files
+• understand relationships between files
+• answer questions about project architecture
+• propose code changes
+• apply code changes directly to files
+• create new files
+• refactor existing files
+• explain reasoning
+• maintain conversation history
+• maintain project context summary
+• operate continuously on the same project
+
+Include system prompt instructing AI to behave as a senior game developer.
+
+AI must receive:
+
+• user prompt
+• relevant project files
+• project file tree
+• summary of architecture
+
+AI must return:
+
+• explanation
+• structured code edits
+• patch format when possible
+
+CHANGE TRACKING
+
+Implement change tracking system.
+
+Requirements:
+
+• maintain history of AI edits
+• show diff view
+• allow reverting to previous versions
+• show log of changes made by AI
+• show timestamp of changes
+• allow manual restore of earlier file version
+
+LIVE GAME PREVIEW (CRITICAL)
+
+Implement a working runtime preview environment capable of executing uploaded game projects.
+
+Requirements:
+
+• preview panel that runs game in iframe
+• preview must automatically update when files change
+• preview must support Phaser 3 games
+• preview must support HTML5 Canvas games
+• preview must correctly resolve relative paths
+• preview must display runtime errors
+• preview must allow user interaction
+• preview must sandbox execution environment
+
+BACKEND PREVIEW SERVER
+
+Implement static file serving for project runtime.
+
+Create route:
+
+/preview/*
+
+Serve project files directly from project storage.
+
+Example implementation:
+
+app.use("/preview", express.static(projectRoot))
+
+PREVIEW ENTRY DETECTION
+
+Automatically detect project entry point.
+
+Search for:
+
+index.html
+main.js
+src/main.js
+game.js
+
+If index.html exists:
+load it directly in iframe.
+
+If index.html does not exist:
+generate temporary index.html wrapper that loads detected entry file.
+
+Ensure compatibility with ES modules.
+
+IFRAME CONFIGURATION
+
+Preview iframe must allow scripts.
+
+Use:
+
+sandbox="allow-scripts allow-same-origin allow-pointer-lock"
+
+Ensure Phaser runtime loads correctly.
+
+ERROR VISIBILITY
+
+Display runtime errors in preview console panel.
+
+Capture:
+
+console.log
+console.error
+uncaught exceptions
+
+PROJECT STORAGE
+
+Store projects persistently.
+
+Allow:
+
+multiple projects
+reopening existing project
+saving edits
+loading project history
+
+TECH STACK
+
+Frontend:
+React
+Tailwind CSS
+
+Editor:
+Monaco Editor
+
+Backend:
+Node.js
+Express
+
+AI Integration:
+abstract provider layer
+
+Allow connection to:
+
+OpenAI API
+local LLM endpoint
+other providers
+
+FILE OPERATIONS
+
+Implement services for:
+
+read file
+write file
+rename file
+move file
+delete file
+create folder
+move folder
+delete folder
+
+ZIP HANDLING
+
+Implement correct zip extraction.
+
+Requirements:
+
+• preserve folder hierarchy
+• support deeply nested directories
+• correctly extract all file types
+• maintain relative paths
+• handle large zips
+
+Use reliable zip parsing library.
+
+UI LAYOUT
+
+Three column layout:
+
+left sidebar:
+file explorer
+
+center:
+code editor tabs
+
+right panel:
+live game preview
+
+bottom panel:
+
+AI chat interface
+change history
+console output
+
+ARCHITECTURE
+
+Organize project clearly.
+
+/client
+/components
+/editor
+/file-explorer
+/chat
+/preview
+
+/server
+/routes
+/services/ai
+/services/filesystem
+/services/preview
+
+/shared
+/types
+
+Ensure modular design.
+
+DELIVERABLE
+
+Working MVP allowing:
+
+create project
+upload project
+view file tree
+edit files
+drag files between folders
+rename files
+chat with AI
+apply AI edits
+run game in preview window
+see changes instantly
+continue development indefinitely
+
+Design system for long-term continuous iteration on same project.
+
+
+My previous iteration of this attempt showed an actual long list of code-output as a result of the ai thoughts….  Please present this as summary, and condense the thoughts to a “...” Which I can expand if I should choose to do that, but is condensed by default.  Provide a “thinking…” loading wheel type of thing while thinking takes placee.    Id also like to chart how much thinking or how long thinking took place for each entry.  Ie “thought for 1 minute, made 12 changes, etc.”  
+
+The absolute priority here is to provide a clean user interface with a working playable, editable game with AI assist.    Let me know if you have questions.    Thanks in advance for your help - I look forward to working together on this.  You’re an invaluable addition to the team!  

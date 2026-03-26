@@ -94,3 +94,32 @@ Generated React Query hooks and fetch client from the OpenAPI spec (e.g. `useHea
 ### `scripts` (`@workspace/scripts`)
 
 Utility scripts package. Each script is a `.ts` file in `src/` with a corresponding npm script in `package.json`. Run scripts via `pnpm --filter @workspace/scripts run <script>`. Scripts can import any workspace package (e.g., `@workspace/db`) by adding it as a dependency in `scripts/package.json`.
+
+### `artifacts/game-ide` (`@workspace/game-ide`)
+
+React + Vite frontend for the AI Game Dev IDE.
+
+- Entry: `src/main.tsx`
+- Pages: `src/pages/Dashboard.tsx`, `src/pages/Ide.tsx`
+- IDE components: `src/components/ide/` — FileExplorer, CodeEditor (Monaco), PreviewPanel, AiChatPanel, ChangesPanel
+- Hooks: `src/hooks/use-api.ts` (React Query wrappers with cache invalidation), `src/hooks/use-ide.ts` (IDE context)
+- Dark IDE theme: `src/index.css` (CSS variables for charcoal backgrounds, blue accent)
+- Vite proxy: `/api/*` and `/preview/*` are proxied to the API server (port 8080 by default, configurable via `API_PORT` env var)
+
+## AI Game Dev IDE Features
+
+- **Dashboard**: Create/upload ZIP/manage projects; rename, duplicate, delete from dropdown menu
+- **VS Code-style File Explorer**: Context menu (rename, delete, duplicate, new file, new folder), drag-and-drop upload
+- **Monaco Code Editor**: Tabbed multi-file editing with syntax highlighting
+- **Live Game Preview**: iframe serves from `/preview/:projectId/` with console.log injection (postMessage to parent)
+- **Console Tab**: Captures logs/errors/warnings from the preview iframe in real time
+- **AI Chat Panel**: SSE streaming chat (GPT via Replit OpenAI AI Integration), collapsible thoughts, parses file tags to apply code changes
+- **Changes Panel**: History of AI-applied file changes with revert capability
+- **File Storage**: `/tmp/game-ide-projects/{projectId}/files/` on disk
+- **Demo Project**: "Demo: Phaser Platformer" created at startup for immediate exploration
+
+## Key Routing
+
+- Port 80 (via Replit proxy): game-ide Vite frontend at `/`
+- Port 8080: API server (Express), mounted at `/api/` and `/preview/`
+- The Vite dev server proxies `/api/*` and `/preview/*` to port 8080

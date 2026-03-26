@@ -1,22 +1,29 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: AI Game Dev IDE API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: projects
+    description: Project management
+  - name: files
+    description: File operations
+  - name: ai
+    description: AI coding agent
+  - name: preview
+    description: Game preview
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +31,504 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [projects]
+      summary: List all projects
+      responses:
+        "200":
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Project"
+    post:
+      operationId: createProject
+      tags: [projects]
+      summary: Create a new project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectBody"
+      responses:
+        "201":
+          description: Created project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /projects/{id}:
+    get:
+      operationId: getProject
+      tags: [projects]
+      summary: Get a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      summary: Update a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProjectBody"
+      responses:
+        "200":
+          description: Updated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+    delete:
+      operationId: deleteProject
+      tags: [projects]
+      summary: Delete a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /projects/{id}/duplicate:
+    post:
+      operationId: duplicateProject
+      tags: [projects]
+      summary: Duplicate a project
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "201":
+          description: Duplicated project
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Project"
+
+  /projects/{id}/files:
+    get:
+      operationId: listFiles
+      tags: [files]
+      summary: List project files as tree
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File tree
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FileNode"
+
+  /projects/{id}/files/read:
+    get:
+      operationId: readFile
+      tags: [files]
+      summary: Read file content
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FileContent"
+
+  /projects/{id}/files/write:
+    post:
+      operationId: writeFile
+      tags: [files]
+      summary: Write file content
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WriteFileBody"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /projects/{id}/files/create-folder:
+    post:
+      operationId: createFolder
+      tags: [files]
+      summary: Create a folder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFolderBody"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /projects/{id}/files/rename:
+    post:
+      operationId: renameFile
+      tags: [files]
+      summary: Rename a file or folder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RenameFileBody"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /projects/{id}/files/move:
+    post:
+      operationId: moveFile
+      tags: [files]
+      summary: Move a file or folder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoveFileBody"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /projects/{id}/files/delete:
+    delete:
+      operationId: deleteFile
+      tags: [files]
+      summary: Delete a file or folder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: path
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /projects/{id}/files/duplicate:
+    post:
+      operationId: duplicateFile
+      tags: [files]
+      summary: Duplicate a file
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DuplicateFileBody"
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /projects/{id}/upload:
+    post:
+      operationId: uploadFiles
+      tags: [files]
+      summary: Upload files (multipart)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                paths:
+                  type: array
+                  items:
+                    type: string
+                overwrite:
+                  type: boolean
+      responses:
+        "200":
+          description: Upload result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResult"
+
+  /projects/{id}/upload-zip:
+    post:
+      operationId: uploadZip
+      tags: [files]
+      summary: Upload a zip file and extract it
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                overwrite:
+                  type: boolean
+      responses:
+        "200":
+          description: Upload result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResult"
+
+  /projects/{id}/ai/chat:
+    post:
+      operationId: aiChat
+      tags: [ai]
+      summary: Send a message to the AI coding agent (SSE streaming)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AiChatBody"
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /projects/{id}/ai/history:
+    get:
+      operationId: getAiHistory
+      tags: [ai]
+      summary: Get AI conversation history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: History
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AiMessage"
+    delete:
+      operationId: clearAiHistory
+      tags: [ai]
+      summary: Clear AI conversation history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Cleared
+
+  /projects/{id}/changes:
+    get:
+      operationId: getChangeHistory
+      tags: [files]
+      summary: Get file change history
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Change history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FileChange"
+
+  /projects/{id}/changes/{changeId}/revert:
+    post:
+      operationId: revertChange
+      tags: [files]
+      summary: Revert a file to a previous version
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: changeId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /projects/{id}/preview-entry:
+    get:
+      operationId: getPreviewEntry
+      tags: [preview]
+      summary: Get project preview entry point
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Preview entry info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PreviewEntry"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +539,244 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required:
+        - success
+
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        entryFile:
+          type: string
+        fileCount:
+          type: integer
+      required:
+        - id
+        - name
+        - createdAt
+        - updatedAt
+        - fileCount
+
+    CreateProjectBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - name
+
+    UpdateProjectBody:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    FileNode:
+      type: object
+      properties:
+        name:
+          type: string
+        path:
+          type: string
+        type:
+          type: string
+          enum: [file, folder]
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/FileNode"
+        size:
+          type: integer
+      required:
+        - name
+        - path
+        - type
+
+    FileContent:
+      type: object
+      properties:
+        path:
+          type: string
+        content:
+          type: string
+        language:
+          type: string
+      required:
+        - path
+        - content
+
+    WriteFileBody:
+      type: object
+      properties:
+        path:
+          type: string
+        content:
+          type: string
+      required:
+        - path
+        - content
+
+    CreateFolderBody:
+      type: object
+      properties:
+        path:
+          type: string
+      required:
+        - path
+
+    RenameFileBody:
+      type: object
+      properties:
+        oldPath:
+          type: string
+        newName:
+          type: string
+      required:
+        - oldPath
+        - newName
+
+    MoveFileBody:
+      type: object
+      properties:
+        sourcePath:
+          type: string
+        destinationFolder:
+          type: string
+      required:
+        - sourcePath
+        - destinationFolder
+
+    DuplicateFileBody:
+      type: object
+      properties:
+        path:
+          type: string
+      required:
+        - path
+
+    UploadResult:
+      type: object
+      properties:
+        uploaded:
+          type: array
+          items:
+            type: string
+        skipped:
+          type: array
+          items:
+            type: string
+        errors:
+          type: array
+          items:
+            type: string
+      required:
+        - uploaded
+        - skipped
+        - errors
+
+    AiChatBody:
+      type: object
+      properties:
+        message:
+          type: string
+        contextFiles:
+          type: array
+          items:
+            type: string
+      required:
+        - message
+
+    AiMessage:
+      type: object
+      properties:
+        id:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        thinking:
+          type: string
+        changesCount:
+          type: integer
+        thinkingDurationMs:
+          type: integer
+      required:
+        - id
+        - role
+        - content
+        - timestamp
+
+    FileChange:
+      type: object
+      properties:
+        id:
+          type: string
+        projectId:
+          type: string
+        filePath:
+          type: string
+        previousContent:
+          type: string
+        newContent:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        aiMessageId:
+          type: string
+        description:
+          type: string
+      required:
+        - id
+        - projectId
+        - filePath
+        - newContent
+        - timestamp
+
+    PreviewEntry:
+      type: object
+      properties:
+        entryFile:
+          type: string
+        url:
+          type: string
+        generated:
+          type: boolean
+      required:
+        - entryFile
+        - url

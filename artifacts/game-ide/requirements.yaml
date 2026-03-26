@@ -1,0 +1,10 @@
+packages:
+  "@monaco-editor/react": "For the fully-featured code editor with syntax highlighting"
+  "react-markdown": "For rendering AI chat responses nicely with code blocks"
+  "remark-gfm": "For markdown tables and standard formatting in AI chat"
+  "date-fns": "For formatting timestamps"
+images: []
+notes:
+  - "The app defaults to a dark mode theme matching professional IDEs"
+  - "Assumes preview iframe posts console messages to parent window via postMessage({ type: 'console', level: 'log'|'error', args: [...] })"
+  - "Uses standard React Query hooks from @workspace/api-client-react"

@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "AI Game Dev IDE"
+version = "1.0.0"
+id = "artifacts/game-ide"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18678
+
+[services.development]
+run = "pnpm --filter @workspace/game-ide run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/game-ide", "run", "build" ]
+publicDir = "artifacts/game-ide/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18678"
+BASE_PATH = "/"
