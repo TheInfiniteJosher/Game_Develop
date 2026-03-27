@@ -22,6 +22,7 @@ import {
   countFiles,
 } from "../services/filesystem.js";
 import { nanoid } from "../lib/nanoid.js";
+import { isViteProject, buildViteProject, getViteStatus } from "../services/vite-manager.js";
 
 const router: IRouter = Router({ mergeParams: true });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
@@ -222,13 +223,27 @@ router.post("/upload-zip", upload.single("file"), async (req, res) => {
     const entries = zip.getEntries();
     const root = getProjectRoot(req.params.id);
 
+    // Detect and strip a common top-level folder (e.g. my-game/src/... → src/...)
+    const fileEntries = entries.filter((e) => !e.isDirectory);
+    let commonPrefix = "";
+    if (fileEntries.length > 0) {
+      const firstParts = fileEntries[0].entryName.replace(/^\//, "").split("/");
+      if (firstParts.length > 1) {
+        const candidate = firstParts[0] + "/";
+        if (fileEntries.every((e) => e.entryName.replace(/^\//, "").startsWith(candidate))) {
+          commonPrefix = candidate;
+        }
+      }
+    }
+
     for (const entry of entries) {
       if (entry.isDirectory) continue;
 
-      // Strip top-level folder if all files share one
-      let entryName = entry.entryName;
-      // Remove leading slash
-      entryName = entryName.replace(/^\//, "");
+      // Strip leading slash and common top-level folder prefix
+      let entryName = entry.entryName.replace(/^\//, "");
+      if (commonPrefix && entryName.startsWith(commonPrefix)) {
+        entryName = entryName.slice(commonPrefix.length);
+      }
 
       try {
         const fullPath = path.join(root, entryName);
@@ -247,7 +262,14 @@ router.post("/upload-zip", upload.single("file"), async (req, res) => {
     }
 
     await updateProjectStats(req.params.id);
-    res.json({ uploaded, skipped, errors });
+
+    // Detect and auto-build Vite projects
+    const vite = isViteProject(req.params.id);
+    if (vite) {
+      buildViteProject(req.params.id).catch(() => {});
+    }
+
+    res.json({ uploaded, skipped, errors, isViteProject: vite });
   } catch (err) {
     req.log.error({ err }, "Failed to upload zip");
     res.status(500).json({ error: "Failed to upload zip" });
@@ -312,10 +334,16 @@ router.get("/preview-entry", async (req, res) => {
     const entryFile = project?.entryFile || await detectEntryFile(req.params.id);
     const url = `/api/preview/${req.params.id}/${entryFile || "index.html"}`;
 
+    const vite = isViteProject(req.params.id);
+    const { status: viteStatus, logs: viteLogs } = getViteStatus(req.params.id);
+
     res.json({
       entryFile: entryFile || "index.html",
       url,
       generated: !entryFile,
+      isViteProject: vite,
+      viteStatus,
+      viteLogs,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get preview entry");
