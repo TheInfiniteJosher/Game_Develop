@@ -15,6 +15,17 @@ interface ViteState {
 
 const states = new Map<string, ViteState>();
 
+// Build a reliable PATH that includes the directory containing the current
+// node/npm binaries. This ensures child processes can find npm and npx in
+// both dev and production environments.
+function buildEnv(): NodeJS.ProcessEnv {
+  const nodeDir = path.dirname(process.execPath);
+  const basePath = process.env.PATH ?? "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
+  const pathParts = basePath.split(":").filter(Boolean);
+  if (!pathParts.includes(nodeDir)) pathParts.unshift(nodeDir);
+  return { ...process.env, PATH: pathParts.join(":") };
+}
+
 export function getProjectFilesRoot(projectId: string): string {
   return path.join(STORAGE_ROOT, projectId, "files");
 }
@@ -37,8 +48,7 @@ export function isViteProject(projectId: string): boolean {
 export function getViteStatus(projectId: string): { status: ViteStatus; logs: string[] } {
   const state = states.get(projectId);
   if (!state) {
-    // Check if dist already exists from a previous session
-    if (existsSync(getProjectDistRoot(projectId))) {
+    if (existsSync(path.join(getProjectDistRoot(projectId), "index.html"))) {
       return { status: "ready", logs: ["Build output found from previous session."] };
     }
     return { status: "idle", logs: [] };
@@ -52,7 +62,7 @@ export async function buildViteProject(projectId: string): Promise<void> {
 
   const existing = states.get(projectId);
   if (existing?.status === "installing" || existing?.status === "building") {
-    return; // Already in progress
+    return;
   }
 
   const state: ViteState = { status: "installing", logs: [] };
@@ -64,20 +74,22 @@ export async function buildViteProject(projectId: string): Promise<void> {
   };
 
   try {
-    // Clean previous dist
     await fs.rm(distDir, { recursive: true, force: true });
 
     addLog("📦 Running npm install...");
-    await runCommand("npm", ["install", "--prefer-offline"], root, addLog);
+    await runCommand("npm", ["install", "--prefer-offline", "--no-audit", "--no-fund"], root, addLog);
 
     state.status = "building";
     addLog("🔨 Running vite build...");
-    await runCommand(
-      "npx",
-      ["vite", "build", "--outDir", distDir, "--base", "./", "--logLevel", "info"],
-      root,
-      addLog
-    );
+
+    // Prefer the locally installed vite binary over npx for reliability
+    const localVite = path.join(root, "node_modules", ".bin", "vite");
+    const viteCmd = existsSync(localVite) ? localVite : "npx";
+    const viteArgs = existsSync(localVite)
+      ? ["build", "--outDir", distDir, "--base", "./", "--logLevel", "info"]
+      : ["vite", "build", "--outDir", distDir, "--base", "./", "--logLevel", "info"];
+
+    await runCommand(viteCmd, viteArgs, root, addLog);
 
     state.status = "ready";
     addLog("✅ Build complete! Preview is ready.");
@@ -95,7 +107,11 @@ function runCommand(
   onLog: (line: string) => void
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args, { cwd, shell: true });
+    const proc = spawn(cmd, args, {
+      cwd,
+      shell: false,
+      env: buildEnv(),
+    });
 
     proc.stdout?.on("data", (data: Buffer) => {
       data
@@ -118,6 +134,9 @@ function runCommand(
       else reject(new Error(`Process exited with code ${code}`));
     });
 
-    proc.on("error", reject);
+    proc.on("error", (err) => {
+      onLog(`Spawn error: ${err.message}`);
+      reject(err);
+    });
   });
 }
