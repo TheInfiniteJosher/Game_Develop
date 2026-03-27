@@ -310,7 +310,7 @@ router.get("/preview-entry", async (req, res) => {
       .where(eq(projectsTable.id, req.params.id));
 
     const entryFile = project?.entryFile || await detectEntryFile(req.params.id);
-    const url = `/preview/${req.params.id}/${entryFile || "index.html"}`;
+    const url = `/api/preview/${req.params.id}/${entryFile || "index.html"}`;
 
     res.json({
       entryFile: entryFile || "index.html",

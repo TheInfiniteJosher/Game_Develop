@@ -34,8 +34,8 @@ app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
 // Serve game project files for preview
-// Route: /preview/:projectId/*
-app.use("/preview/:projectId", async (req, res, next) => {
+// Route: /api/preview/:projectId/*
+app.use("/api/preview/:projectId", async (req, res, next) => {
   const { projectId } = req.params;
   const projectRoot = getProjectRoot(projectId);
 
@@ -116,7 +116,7 @@ app.use("/preview/:projectId", async (req, res, next) => {
 
 // Static file serving for projects
 const STORAGE_ROOT = process.env.PROJECTS_STORAGE || "/tmp/game-ide-projects";
-app.use("/preview/:projectId", (req, res, next) => {
+app.use("/api/preview/:projectId", (req, res, next) => {
   const { projectId } = req.params;
   const projectRoot = path.join(STORAGE_ROOT, projectId, "files");
   express.static(projectRoot)(req, res, next);

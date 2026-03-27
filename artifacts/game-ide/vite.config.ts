@@ -71,10 +71,6 @@ export default defineConfig({
         target: `http://localhost:${process.env.API_PORT || 8080}`,
         changeOrigin: true,
       },
-      "/preview": {
-        target: `http://localhost:${process.env.API_PORT || 8080}`,
-        changeOrigin: true,
-      },
     },
   },
   preview: {
