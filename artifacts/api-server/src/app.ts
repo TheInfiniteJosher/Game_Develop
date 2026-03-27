@@ -5,7 +5,12 @@ import router from "./routes/index.js";
 import { logger } from "./lib/logger.js";
 import path from "path";
 import { getProjectRoot, detectEntryFile } from "./services/filesystem.js";
-import { getProjectDistRoot } from "./services/vite-manager.js";
+import {
+  getProjectDistRoot,
+  isViteProject,
+  getViteStatus,
+  buildViteProject,
+} from "./services/vite-manager.js";
 import { existsSync } from "fs";
 import fs from "fs/promises";
 
@@ -60,25 +65,62 @@ function injectConsoleScript(html: string): string {
   return CONSOLE_INJECT_SCRIPT + html;
 }
 
+// Build status HTML page shown while vite is compiling or has errored
+function buildingPage(status: string, logs: string[]): string {
+  const isError = status === "error";
+  const logText = logs.slice(-40).join("\n");
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${isError ? "Build Failed" : "Building Preview…"}</title>
+  <style>
+    body { margin: 0; background: #0d1117; color: #c9d1d9; font-family: monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; box-sizing: border-box; }
+    h2 { color: ${isError ? "#f85149" : "#58a6ff"}; margin-bottom: 12px; }
+    pre { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px; width: 100%; max-width: 700px; overflow: auto; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 60vh; }
+    .spinner { border: 3px solid #30363d; border-top-color: #58a6ff; border-radius: 50%; width: 32px; height: 32px; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+  ${!isError ? `<script>setTimeout(()=>location.reload(),2500)</script>` : ""}
+</head>
+<body>
+  ${isError ? "" : `<div class="spinner"></div>`}
+  <h2>${isError ? "❌ Build Failed" : "🔨 Building preview…"}</h2>
+  <pre>${logText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+</body>
+</html>`;
+}
+
 // Serve game project files for preview
-// Prefers Vite dist/ output when available, falls back to raw files/
+// For Vite projects: ONLY serve from dist/. If dist isn't ready, show a build status page.
+// For non-Vite projects: serve raw source files.
 // Route: /api/preview/:projectId/*
 app.use("/api/preview/:projectId", async (req, res, next) => {
   const { projectId } = req.params;
   const projectRoot = getProjectRoot(projectId);
   const distRoot = getProjectDistRoot(projectId);
 
-  // Pick the serve root: prefer Vite dist if it exists
-  const hasViteDist = existsSync(path.join(distRoot, "index.html"));
-  const serveRoot = hasViteDist ? distRoot : projectRoot;
-
-  if (!existsSync(serveRoot)) {
+  if (!existsSync(projectRoot)) {
     return res.status(404).send("Project not found");
   }
 
+  const isVite = isViteProject(projectId);
+  const hasViteDist = existsSync(path.join(distRoot, "index.html"));
+
+  // If this is a Vite project without a completed dist, show build status page
+  if (isVite && !hasViteDist) {
+    const { status, logs } = getViteStatus(projectId);
+    // If idle (e.g. server restarted), kick off the build automatically
+    if (status === "idle") {
+      buildViteProject(projectId).catch(() => {});
+    }
+    return res.setHeader("Content-Type", "text/html").send(buildingPage(status, logs));
+  }
+
+  const serveRoot = hasViteDist ? distRoot : projectRoot;
   const filePath = req.path === "/" ? "" : req.path.replace(/^\//, "");
 
-  // For Vite dist, always use index.html as the entry (SPA-style)
   const entry = hasViteDist
     ? (filePath || "index.html")
     : (filePath || await detectEntryFile(projectId) || "index.html");
@@ -86,7 +128,7 @@ app.use("/api/preview/:projectId", async (req, res, next) => {
   const fullPath = path.join(serveRoot, entry);
 
   if (!existsSync(fullPath)) {
-    // Auto-generate index.html if project only has JS (non-Vite fallback)
+    // Auto-generate index.html if non-Vite project only has JS
     if (!hasViteDist && (!filePath || filePath === "index.html")) {
       const mainJs = ["main.js", "src/main.js", "game.js", "src/game.js"].find(
         (f) => existsSync(path.join(projectRoot, f))
@@ -101,7 +143,7 @@ app.use("/api/preview/:projectId", async (req, res, next) => {
   <style>body { margin: 0; background: #000; }</style>
 </head>
 <body>
-  <script type="module" src="/${projectId}/${mainJs}"></script>
+  <script type="module" src="./${mainJs}"></script>
 </body>
 </html>`;
         return res.setHeader("Content-Type", "text/html").send(injectConsoleScript(autoHtml));
@@ -123,7 +165,7 @@ app.use("/api/preview/:projectId", async (req, res, next) => {
   next();
 });
 
-// Static file serving for projects (dist takes priority over files)
+// Static file serving for projects (dist takes priority over raw files)
 app.use("/api/preview/:projectId", (req, res, next) => {
   const { projectId } = req.params;
   const distRoot = getProjectDistRoot(projectId);
