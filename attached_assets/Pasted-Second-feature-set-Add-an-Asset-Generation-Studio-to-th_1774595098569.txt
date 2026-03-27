@@ -1,0 +1,133 @@
+Second feature set:
+
+Add an Asset Generation Studio to the existing AI game development IDE.
+
+GOAL
+Enable users to generate game-ready visual assets using AI and automatically integrate them into the current project structure so they can immediately be used inside Phaser-based or HTML5 Canvas games.
+
+ASSET TYPES TO SUPPORT
+
+1. sprite characters
+
+* pixel art or stylized characters
+* multiple animation frames
+* walking, jumping, idle, attack cycles
+
+2. sprite animations
+
+* generate frame sequences
+* automatically assemble sprite sheets
+* allow adjustable frame count (4, 6, 8, 12 frames)
+
+3. tilesets
+
+* seamless repeating tiles
+* terrain tiles
+* platform tiles
+* grid-aligned output
+
+4. backgrounds
+
+* parallax layers
+* environment scenes
+* skyboxes
+
+5. UI elements
+
+* buttons
+* icons
+* panels
+* HUD elements
+
+6. boss and enemy designs
+
+* concept art
+* sprite variations
+
+INTERFACE
+
+Add new IDE panel called:
+
+Asset Studio
+
+Include:
+
+prompt input field
+style selector (pixel art, cartoon, realistic, vector)
+resolution selector
+frame count selector (for animations)
+
+Include preview window showing generated results.
+
+PIPELINE
+
+When user submits prompt:
+
+1. send prompt to image generation API
+2. receive image or frame sequence
+3. if multiple frames generated:
+   assemble into sprite sheet grid
+4. save file to project assets folder
+
+Example structure:
+
+/assets/sprites/
+/assets/backgrounds/
+/assets/tilesets/
+/assets/ui/
+/assets/vfx/
+
+PHASER COMPATIBILITY
+
+Ensure generated sprite sheets are formatted to work with Phaser loader:
+
+this.load.spritesheet()
+
+Include metadata describing:
+
+frame width
+frame height
+frame count
+
+FILE MANAGEMENT
+
+Add asset browser panel:
+
+preview thumbnails
+rename assets
+delete assets
+copy file path
+insert import snippet button
+
+AI PROMPT ASSISTANCE
+
+Provide preset prompt templates:
+
+"8-frame pixel art side view run cycle"
+"top-down tileset grass terrain seamless"
+"dark fantasy boss concept art"
+"retro platformer background layer"
+
+ARCHITECTURE
+
+Implement asset generation service layer:
+
+/server/services/assetGeneration
+
+Allow configurable providers:
+
+OpenAI image API
+Stability API
+Replicate API
+
+Ensure modular design so additional asset types can be added later (audio, video cutscenes).
+
+DELIVERABLE
+
+User can:
+
+describe asset → generate → preview → save → immediately use in game code.
+
+I attempted to iterate this in a recent build and the UI came together brilliantly, but the output for any given prompt was just a random empty shell of an asset, with a question mark, instead of an actual image.  So please make sure this produces the ability to actually create art.  If we need to connect additional internal  tooling for this on the replit backend, then whatever we need for it.
+
+The end result of this is a full working AI-powered Game-development studio capable of running, working on, iterating on, generating art / animations / animated videos / cutscenes for phaser style gameplay. All right in one handy environment.  

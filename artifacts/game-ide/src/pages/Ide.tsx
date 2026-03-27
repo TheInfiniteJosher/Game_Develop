@@ -8,7 +8,8 @@ import { CodeEditor } from "@/components/ide/CodeEditor";
 import { PreviewPanel } from "@/components/ide/PreviewPanel";
 import { AiChatPanel } from "@/components/ide/AiChatPanel";
 import { ChangesPanel } from "@/components/ide/ChangesPanel";
-import { ChevronLeft, FileCode2, X, Terminal } from "lucide-react";
+import { AssetStudio } from "@/components/ide/AssetStudio";
+import { ChevronLeft, FileCode2, X, Terminal, Palette } from "lucide-react";
 import { useGetProject } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
 
@@ -117,18 +118,21 @@ function IdeLayout({ projectId }: { projectId: string }) {
 
                   <ResizableHandle className="h-1 bg-border hover:bg-primary/50 transition-colors" />
 
-                  {/* Bottom Panel (AI Chat / Changes / Console) */}
+                  {/* Bottom Panel (AI Chat / Changes / Console / Assets) */}
                   <ResizablePanel defaultSize={30} minSize={20}>
                     <Tabs defaultValue="chat" className="h-full flex flex-col">
                       <div className="px-2 border-b border-border bg-card shrink-0">
-                        <TabsList className="bg-transparent border-0 h-10 p-0 gap-4">
-                          <TabsTrigger value="chat" className="data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full shadow-none px-4 text-xs tracking-wide uppercase font-semibold">
+                        <TabsList className="bg-transparent border-0 h-10 p-0 gap-3">
+                          <TabsTrigger value="chat" className="data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full shadow-none px-3 text-xs tracking-wide uppercase font-semibold">
                             AI Chat
                           </TabsTrigger>
-                          <TabsTrigger value="changes" className="data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full shadow-none px-4 text-xs tracking-wide uppercase font-semibold">
+                          <TabsTrigger value="assets" className="data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full shadow-none px-3 text-xs tracking-wide uppercase font-semibold flex items-center gap-1.5">
+                            <Palette className="w-3 h-3" />Assets
+                          </TabsTrigger>
+                          <TabsTrigger value="changes" className="data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full shadow-none px-3 text-xs tracking-wide uppercase font-semibold">
                             Changes
                           </TabsTrigger>
-                          <TabsTrigger value="console" className="data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full shadow-none px-4 text-xs tracking-wide uppercase font-semibold">
+                          <TabsTrigger value="console" className="data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full shadow-none px-3 text-xs tracking-wide uppercase font-semibold">
                             Console
                           </TabsTrigger>
                         </TabsList>
@@ -136,6 +140,9 @@ function IdeLayout({ projectId }: { projectId: string }) {
                       <div className="flex-1 overflow-hidden bg-background">
                         <TabsContent value="chat" className="h-full m-0 data-[state=active]:flex flex-col">
                           <AiChatPanel projectId={projectId} />
+                        </TabsContent>
+                        <TabsContent value="assets" className="h-full m-0 overflow-hidden">
+                          <AssetStudio projectId={projectId} />
                         </TabsContent>
                         <TabsContent value="changes" className="h-full m-0">
                           <ChangesPanel projectId={projectId} />
