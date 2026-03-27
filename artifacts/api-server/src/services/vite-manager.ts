@@ -79,17 +79,31 @@ export async function buildViteProject(projectId: string): Promise<void> {
     addLog("📦 Running npm install...");
     await runCommand("npm", ["install", "--prefer-offline", "--no-audit", "--no-fund"], root, addLog);
 
+    // If vite wasn't installed as a project dependency, install it explicitly.
+    // We pin to vite@6 — the version that works in our environment — rather than
+    // letting npx grab the latest (v8+) which has breaking config-loading changes.
+    const localVite = path.join(root, "node_modules", ".bin", "vite");
+    if (!existsSync(localVite)) {
+      addLog("📦 vite not found in project deps — installing vite@6...");
+      await runCommand(
+        "npm",
+        ["install", "--save-dev", "--no-audit", "--no-fund", "vite@6"],
+        root,
+        addLog
+      );
+    }
+
     state.status = "building";
     addLog("🔨 Running vite build...");
 
-    // Prefer the locally installed vite binary over npx for reliability
-    const localVite = path.join(root, "node_modules", ".bin", "vite");
-    const viteCmd = existsSync(localVite) ? localVite : "npx";
-    const viteArgs = existsSync(localVite)
-      ? ["build", "--outDir", distDir, "--base", "./", "--logLevel", "info"]
-      : ["vite", "build", "--outDir", distDir, "--base", "./", "--logLevel", "info"];
-
-    await runCommand(viteCmd, viteArgs, root, addLog);
+    // Always use the locally installed vite binary
+    const viteBin = path.join(root, "node_modules", ".bin", "vite");
+    await runCommand(
+      viteBin,
+      ["build", "--outDir", distDir, "--base", "./", "--logLevel", "info"],
+      root,
+      addLog
+    );
 
     state.status = "ready";
     addLog("✅ Build complete! Preview is ready.");
