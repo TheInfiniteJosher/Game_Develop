@@ -79,12 +79,13 @@ export async function buildViteProject(projectId: string): Promise<void> {
     addLog("📦 Running npm install...");
     await runCommand("npm", ["install", "--prefer-offline", "--no-audit", "--no-fund"], root, addLog);
 
-    // If vite wasn't installed as a project dependency, install it explicitly.
-    // We pin to vite@6 — the version that works in our environment — rather than
-    // letting npx grab the latest (v8+) which has breaking config-loading changes.
-    const localVite = path.join(root, "node_modules", ".bin", "vite");
-    if (!existsSync(localVite)) {
+    // Check if vite is installed by looking for its main entry (not the .bin symlink,
+    // which can fail to be created in some production environments).
+    const viteMainJs = path.join(root, "node_modules", "vite", "bin", "vite.js");
+    if (!existsSync(viteMainJs)) {
       addLog("📦 vite not found in project deps — installing vite@6...");
+      // Remove package-lock.json so npm doesn't skip the install
+      await fs.rm(path.join(root, "package-lock.json"), { force: true });
       await runCommand(
         "npm",
         ["install", "--save-dev", "--no-audit", "--no-fund", "vite@6"],
@@ -93,14 +94,19 @@ export async function buildViteProject(projectId: string): Promise<void> {
       );
     }
 
+    // Verify vite is now installed
+    if (!existsSync(viteMainJs)) {
+      throw new Error("vite could not be installed. Check npm access.");
+    }
+
     state.status = "building";
     addLog("🔨 Running vite build...");
 
-    // Always use the locally installed vite binary
-    const viteBin = path.join(root, "node_modules", ".bin", "vite");
+    // Invoke vite via `node vite/bin/vite.js` — avoids .bin/ symlink issues
+    // that occur in some production environments.
     await runCommand(
-      viteBin,
-      ["build", "--outDir", distDir, "--base", "./", "--logLevel", "info"],
+      process.execPath,
+      [viteMainJs, "build", "--outDir", distDir, "--base", "./", "--logLevel", "info"],
       root,
       addLog
     );
