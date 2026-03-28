@@ -29,6 +29,9 @@ const STYLE_MAP: Record<string, string> = {
   dark: "dark fantasy art style, moody atmospheric, detailed illustration, gothic game art",
 };
 
+// Asset types that need transparent backgrounds vs opaque
+const OPAQUE_TYPES = new Set(["background", "tileset"]);
+
 function buildEnhancedPrompt(
   userPrompt: string,
   style: string,
@@ -36,20 +39,24 @@ function buildEnhancedPrompt(
   frameCount: number
 ): string {
   const styleDesc = STYLE_MAP[style] || `${style} style`;
+  const needsTransparency = !OPAQUE_TYPES.has(assetType);
+  const bgHint = needsTransparency
+    ? "fully transparent background, PNG with alpha channel, no background fill, isolated subject only"
+    : "";
 
   switch (assetType) {
     case "animation":
-      return `${userPrompt}, ${styleDesc}, horizontal sprite sheet with exactly ${frameCount} equally-sized animation frames in a single row on transparent background, game sprite sheet, consistent character across all frames, smooth animation cycle, no text`;
+      return `${userPrompt}, ${styleDesc}, horizontal sprite sheet with exactly ${frameCount} equally-sized animation frames in a single row, ${bgHint}, game sprite sheet, consistent character across all frames, smooth animation cycle, no text`;
     case "tileset":
       return `${userPrompt}, ${styleDesc}, seamless tileset texture, perfectly tileable, grid-aligned game tiles, consistent lighting, no text, professional game texture`;
     case "background":
       return `${userPrompt}, ${styleDesc}, wide game background scene, layered environment, no characters in foreground, atmospheric depth, game level art, no text`;
     case "ui":
-      return `${userPrompt}, ${styleDesc}, game UI element, clean interface design for HUD or menu, professional game interface art`;
+      return `${userPrompt}, ${styleDesc}, game UI element, clean interface design for HUD or menu, ${bgHint}, professional game interface art`;
     case "vfx":
-      return `${userPrompt}, ${styleDesc}, game visual effect, particle or sprite effect, on transparent or black background`;
+      return `${userPrompt}, ${styleDesc}, game visual effect, particle or sprite effect, ${bgHint}`;
     default:
-      return `${userPrompt}, ${styleDesc}, game character or asset, suitable for 2D side-scroller or top-down game, clean silhouette, centered on transparent background, professional game art quality, no text`;
+      return `${userPrompt}, ${styleDesc}, game character or asset, suitable for 2D side-scroller or top-down game, clean silhouette, ${bgHint}, professional game art quality, no text`;
   }
 }
 
@@ -83,11 +90,13 @@ export async function generateAssetForProject(
 
   const enhancedPrompt = buildEnhancedPrompt(prompt, style, assetType, Number(frameCount));
 
+  const needsTransparency = !OPAQUE_TYPES.has(assetType);
   const response = await openai.images.generate({
     model: "gpt-image-1",
     prompt: enhancedPrompt,
     n: 1,
     size: "1024x1024",
+    ...(needsTransparency ? { background: "transparent" } : {}),
   } as Parameters<typeof openai.images.generate>[0]);
 
   const imageData = (response.data[0] as { b64_json?: string })?.b64_json;
