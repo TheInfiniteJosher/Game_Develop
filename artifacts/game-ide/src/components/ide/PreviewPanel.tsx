@@ -11,55 +11,63 @@ interface ViteInfo {
   status: ViteStatus;
   logs: string[];
   startedAt?: number;
+  isRebuilding?: boolean; // true when a prior dist existed and is still being served
 }
 
-function useViteStatus(projectId: string, initialData: ViteInfo | null) {
+function useViteStatus(projectId: string, initialData: ViteInfo | null, onBuildComplete?: () => void) {
   const [viteInfo, setViteInfo] = useState<ViteInfo | null>(initialData);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const prevStatusRef = useRef<ViteStatus | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch(`/api/projects/${projectId}/vite/status`);
       if (res.ok) {
         const data: ViteInfo = await res.json();
-        setViteInfo(data);
+        setViteInfo(prev => {
+          // Detect transition to "ready" → trigger iframe refresh
+          if (prev?.status !== "ready" && data.status === "ready" && prev?.status !== null) {
+            onBuildComplete?.();
+          }
+          return data;
+        });
         return data;
       }
     } catch {
       // ignore
     }
     return null;
-  }, [projectId]);
+  }, [projectId, onBuildComplete]);
 
   const triggerBuild = useCallback(async () => {
     await fetch(`/api/projects/${projectId}/vite/build`, { method: "POST" });
     await fetchStatus();
   }, [projectId, fetchStatus]);
 
-  // Poll while building (every 1s for responsive progress)
+  // Poll at 1s when building, 3s when ready (to detect auto-rebuild start)
   useEffect(() => {
     if (!viteInfo?.isViteProject) return;
-    if (viteInfo.status === "ready" || viteInfo.status === "idle" || viteInfo.status === "error") {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
+    const isActive = viteInfo.status === "installing" || viteInfo.status === "building";
+    const interval = isActive ? 1000 : 3000;
+
+    if (viteInfo.status === "idle" || viteInfo.status === "error") {
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
       return;
     }
-    if (!pollRef.current) {
-      pollRef.current = setInterval(fetchStatus, 1000);
-    }
+
+    // Reset interval if the rate needs to change
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+    pollRef.current = setInterval(fetchStatus, interval);
+
     return () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
+      if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     };
   }, [viteInfo?.isViteProject, viteInfo?.status, fetchStatus]);
 
   // Sync from parent data on mount / project change
   useEffect(() => {
     if (initialData) setViteInfo(initialData);
+    prevStatusRef.current = null;
   }, [projectId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { viteInfo, fetchStatus, triggerBuild };
@@ -139,12 +147,18 @@ export function PreviewPanel({ projectId }: { projectId: string }) {
       }
     : null;
 
-  const { viteInfo, fetchStatus, triggerBuild } = useViteStatus(projectId, initialViteInfo);
+  // Auto-refresh iframe when a rebuild finishes
+  const onBuildComplete = useCallback(() => {
+    refreshPreview();
+  }, [refreshPreview]);
+
+  const { viteInfo, fetchStatus, triggerBuild } = useViteStatus(projectId, initialViteInfo, onBuildComplete);
 
   const isVite = viteInfo?.isViteProject ?? false;
   const viteStatus = viteInfo?.status ?? "idle";
   const viteLogs = viteInfo?.logs ?? [];
   const isBuilding = viteStatus === "installing" || viteStatus === "building";
+  const isRebuilding = isBuilding && (viteInfo?.isRebuilding ?? false);
   const elapsed = useElapsedSeconds(viteInfo?.startedAt, isBuilding);
 
   // Kick off polling as soon as we know it's a Vite project that's still building
@@ -159,7 +173,8 @@ export function PreviewPanel({ projectId }: { projectId: string }) {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [viteInfo?.logs]);
 
-  const showIframe = !isVite || viteStatus === "ready";
+  // Show iframe: always if non-vite, if ready, OR if rebuilding (old dist still served)
+  const showIframe = !isVite || viteStatus === "ready" || isRebuilding;
   const showBuildPanel = isVite && !showIframe;
 
   const statusLabel: Record<ViteStatus, string> = {
@@ -310,6 +325,15 @@ export function PreviewPanel({ projectId }: { projectId: string }) {
               title="Game Preview"
               sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"
             />
+            {/* Thin pulsing bar shown while a hot-rebuild is in progress */}
+            {isRebuilding && (
+              <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
+                <div className="h-0.5 bg-blue-500 animate-pulse w-full" />
+                <div className="absolute top-1 right-2 text-[10px] text-blue-300 bg-black/60 rounded px-1 py-0.5 select-none">
+                  Rebuilding…
+                </div>
+              </div>
+            )}
             {activeScene && (
               <div className="absolute bottom-0 left-0 right-0 h-6 bg-black/65 backdrop-blur-sm flex items-center px-3 gap-2 text-xs z-10 select-none">
                 <span className={`w-1.5 h-1.5 rounded-full bg-green-400 shrink-0 ${sceneLoading ? "animate-spin" : "animate-pulse"}`} />

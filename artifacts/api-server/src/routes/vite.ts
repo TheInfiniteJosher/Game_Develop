@@ -10,8 +10,8 @@ const router: IRouter = Router({ mergeParams: true });
 router.get("/vite/status", (req, res) => {
   const projectId = req.params.id;
   const vite = isViteProject(projectId);
-  const { status, logs, startedAt } = getViteStatus(projectId);
-  res.json({ isViteProject: vite, status, logs, startedAt });
+  const { status, logs, startedAt, isRebuilding } = getViteStatus(projectId);
+  res.json({ isViteProject: vite, status, logs, startedAt, isRebuilding });
 });
 
 router.post("/vite/build", async (req, res) => {

@@ -41,6 +41,7 @@ interface ViteState {
   logs: string[];
   error?: string;
   startedAt?: number;
+  isRebuilding?: boolean; // true when a dist already existed before this build started
 }
 
 const states = new Map<string, ViteState>();
@@ -64,7 +65,7 @@ export function isViteProject(projectId: string): boolean {
   return hasPackageJson && hasViteConfig;
 }
 
-export function getViteStatus(projectId: string): { status: ViteStatus; logs: string[]; startedAt?: number } {
+export function getViteStatus(projectId: string): { status: ViteStatus; logs: string[]; startedAt?: number; isRebuilding?: boolean } {
   const state = states.get(projectId);
   if (!state) {
     if (existsSync(path.join(getProjectDistRoot(projectId), "index.html"))) {
@@ -72,20 +73,42 @@ export function getViteStatus(projectId: string): { status: ViteStatus; logs: st
     }
     return { status: "idle", logs: [] };
   }
-  return { status: state.status, logs: [...state.logs], startedAt: state.startedAt };
+  return { status: state.status, logs: [...state.logs], startedAt: state.startedAt, isRebuilding: state.isRebuilding };
 }
 
 // ---------------------------------------------------------------------------
 // Build orchestration
 // ---------------------------------------------------------------------------
+// Debounced per-project rebuild scheduler
+const rebuildTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+export function scheduleRebuild(projectId: string, delayMs = 1500): void {
+  if (!isViteProject(projectId)) return;
+  // Cancel any pending rebuild timer
+  const prev = rebuildTimers.get(projectId);
+  if (prev) clearTimeout(prev);
+  const timer = setTimeout(() => {
+    rebuildTimers.delete(projectId);
+    buildViteProject(projectId).catch(() => {});
+  }, delayMs);
+  rebuildTimers.set(projectId, timer);
+}
+
 export async function buildViteProject(projectId: string): Promise<void> {
   const root = getProjectFilesRoot(projectId);
   const distDir = getProjectDistRoot(projectId);
+  // Build into a sibling temp dir so the existing dist stays live while building.
+  // On success we atomically swap; on failure we clean up and leave the old dist.
+  const tempDir = `${distDir}-building`;
 
   const existing = states.get(projectId);
   if (existing?.status === "installing" || existing?.status === "building") return;
 
-  const state: ViteState = { status: "installing", logs: [], startedAt: Date.now() };
+  // If there's already a good dist, mark this as a hot-rebuild so the UI keeps
+  // showing the old preview with just a progress indicator instead of a blank page.
+  const isRebuilding = existsSync(path.join(distDir, "index.html"));
+
+  const state: ViteState = { status: "installing", logs: [], startedAt: Date.now(), isRebuilding };
   states.set(projectId, state);
 
   const addLog = (line: string) => {
@@ -94,7 +117,8 @@ export async function buildViteProject(projectId: string): Promise<void> {
   };
 
   try {
-    await fs.rm(distDir, { recursive: true, force: true });
+    // Clean any leftover temp dir from a previous failed build
+    await fs.rm(tempDir, { recursive: true, force: true });
 
     // Skip npm install if node_modules already exists and package.json hasn't
     // changed since the last install (compare mtimes). This makes rebuilds fast.
@@ -129,22 +153,26 @@ export async function buildViteProject(projectId: string): Promise<void> {
     state.status = "building";
     addLog("🔨 Running vite build...");
 
-    // Run the server's vite directly via node to avoid .bin/ symlink issues.
+    // Build into the temp dir — old dist remains accessible for the preview
     await runCommand(
       process.execPath,
-      [SERVER_VITE.bin, "build", "--outDir", distDir, "--base", "./", "--logLevel", "info"],
+      [SERVER_VITE.bin, "build", "--outDir", tempDir, "--base", "./", "--logLevel", "info"],
       root,
       addLog,
     );
 
-    // Post-process built JS: expose the Phaser.Game instance on window so the
-    // scene-detection script can find it even in minified ESM bundles.
-    // Replaces: new X.Game(cfg)  →  window.__phaserGame=new X.Game(cfg)
-    await patchPhaserGameExport(distDir, addLog);
+    // Post-process built JS: expose the Phaser.Game instance on window
+    await patchPhaserGameExport(tempDir, addLog);
+
+    // Atomically swap: remove old dist, rename temp into place
+    await fs.rm(distDir, { recursive: true, force: true });
+    await fs.rename(tempDir, distDir);
 
     state.status = "ready";
     addLog("✅ Build complete! Preview is ready.");
   } catch (err) {
+    // Clean up the temp dir on failure; old dist (if any) is untouched
+    await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
     state.status = "error";
     state.error = String(err);
     addLog(`❌ Build failed: ${String(err)}`);
