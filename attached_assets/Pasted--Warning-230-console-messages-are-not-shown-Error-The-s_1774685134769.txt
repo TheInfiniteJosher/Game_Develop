@@ -1,0 +1,177 @@
+[Warning] 230 console messages are not shown.
+[Error] The source list for Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored. (x3)
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/d975a848a9b40ccb.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/b4c3db88f91ff0d0.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/e6b43485961c5100.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/cfcba73941073fed.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/a49e4b95955b8fb4.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/d9bfdd03e7392875.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/975d03e0e8b1db7e.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/8539643a707dac56.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/533af04b26d495b8.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/436919db4c97991e.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/0e80ba8a30a279ff.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/9d1bd405870f8ae0.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/7ee8ea91c5529a91.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/01dc9b5bd971a79c.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/aa7e06223e0ad9b4.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/turbopack-2f97650dbebbb6c5.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://js.stripe.com/v3/fingerprinted/js/trusted-types-checker-a86dcafd042e60cf7585cbabd57b0cdb.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/747233ccb4b93c5f.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/88456d56ad43c751.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/b6b6da92f350b566.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/0fed5993fb68eba2.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/03c79dfd8d7d482d.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/7c274b6cc6bc03b8.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/0de19a13be391997.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/97c9b645f975642c.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/37c11113d3a1842e.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/bbf8654a0d2d21f6.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/8ecf675025c2c55e.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/62f79dd09b37c3b9.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/f74fed5d883dbf4f.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/386501d1234c099b.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/d534327e06b1b154.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/35f1237666e1b88b.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/f151882639f60cf6.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/f62666a33464ee55.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/21ea9305a6406e9c.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/d085ec69f0a60767.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/91c61e01a93e87cb.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/1f49a3c880f07c2c.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/49fbf2d8c0bce0ee.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/turbopack-933ab06a03710f59.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/396f20f33b724431.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/6804d28e8545ea9c.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/a7383c0a3b7e4b47.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/a64ce8615f40577b.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/f56cc811e2848390.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/338493386d8c49bb.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/18c6c8314abbb153.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/7361c7c081ae3ac9.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/437621ba5c728f3a.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/162bce51f7cac83b.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/fb8978a292bdb396.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/5e18862d84c9557d.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/85d8d7fba178776d.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/e48d72ed7870f72c.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/6b09df33ac02595d.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/b9a56f148a382ff9.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/f70d15880cec9c39.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/f602ed0f22bb0389.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/turbopack-ab0748fa205fd51a.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/af5c6d03e3600128.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/1575cf58ab0f0a8b.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/aed2ef018b12da7d.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/00fb1929adf57aac.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/0bf3bddb304ca5ae.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/turbopack-b70606421f56c70d.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/c88af1e497ee6e33.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/c8cf3bc283506766.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/turbopack-edb7565706e1ef82.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/0419d6acd41eabf1.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/turbopack-3f7783a6cb5b7f53.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/cd0549bc91a50710.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/82bd865e152e2fe7.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/db575102b3b1b6fb.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://cdn.replit.com/_next/static/chunks/turbopack-74a3b610d4437831.js because it does not appear in the script-src directive of the Content Security Policy.
+[Error] [Report Only] Refused to load https://googleads.g.doubleclick.net/pagead/viewthroughconversion/11411994397/?random=1774684939847&cv=11&fst=1774684939847&bg=ffffff&guid=ON&async=1&en=page_view&gtm=45be63q0h2v9171242957za200zd9171242957xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=0~115616985~115938466~115938468~117484252~117884344&u_w=2056&u_h=1329&url=https%3A%2F%2Freplit.com%2F~&ref=https%3A%2F%2Freplit.com%2F%40josh1147%2FGame-Forge&frm=0&tiba=Home%20-%20Replit&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1733171978.1767891647&data=event%3Dpage_view&rfmt=3&fmt=4 because it does not appear in the script-src directive of the Content Security Policy.
+[Info] Content blocker prevented frame displaying https://replit.com/~ from loading a resource from https://googleads.g.doubleclick.net/pagead/viewthroughconversion/11411994397/?random=1774684939847&cv=11&fst=1774684939847&bg=ffffff&guid=ON&async=1&en=page_view&gtm=45be63q0h2v9171242957za200zd9171242957xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=0~115616985~115938466~115938468~117484252~117884344&u_w=2056&u_h=1329&url=https%3A%2F%2Freplit.com%2F~&ref=https%3A%2F%2Freplit.com%2F%40josh1147%2FGame-Forge&frm=0&tiba=Home%20-%20Replit&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1733171978.1767891647&data=event%3Dpage_view&rfmt=3&fmt=4 (js, line 149)
+[Info] Content blocker prevented frame displaying https://replit.com/~ from loading a resource from https://googleads.g.doubleclick.net/pagead/viewthroughconversion/11411994397/?random=1774684939847&cv=11&fst=1774684939847&fmt=3&bg=ffffff&guid=ON&async=1&en=page_view&gtm=45be63q0h2v9171242957za200zd9171242957xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=0~115616985~115938466~115938468~117484252~117884344&u_w=2056&u_h=1329&url=https%3A%2F%2Freplit.com%2F~&ref=https%3A%2F%2Freplit.com%2F%40josh1147%2FGame-Forge&frm=0&tiba=Home%20-%20Replit&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1733171978.1767891647&data=event%3Dpage_view (js, line 151)
+[Error] [Report Only] Refused to load https://googleads.g.doubleclick.net/pagead/viewthroughconversion/11411994397/?random=1774684968970&cv=11&fst=1774684968970&bg=ffffff&guid=ON&async=1&en=page_view&gtm=45be63q0h2v9171242957za200zd9171242957xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=0~115616985~115938466~115938468~117484252~117884344&u_w=2056&u_h=1329&url=https%3A%2F%2Freplit.com%2F%40josh1147%2FGame-Forge&ref=https%3A%2F%2Freplit.com%2F~&frm=0&tiba=Game%20Forge%20-%20Replit&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1733171978.1767891647&data=event%3Dpage_view&rfmt=3&fmt=4 because it does not appear in the script-src directive of the Content Security Policy.
+[Info] Content blocker prevented frame displaying https://replit.com/@josh1147/Game-Forge from loading a resource from https://googleads.g.doubleclick.net/pagead/viewthroughconversion/11411994397/?random=1774684968970&cv=11&fst=1774684968970&bg=ffffff&guid=ON&async=1&en=page_view&gtm=45be63q0h2v9171242957za200zd9171242957xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=0~115616985~115938466~115938468~117484252~117884344&u_w=2056&u_h=1329&url=https%3A%2F%2Freplit.com%2F%40josh1147%2FGame-Forge&ref=https%3A%2F%2Freplit.com%2F~&frm=0&tiba=Game%20Forge%20-%20Replit&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1733171978.1767891647&data=event%3Dpage_view&rfmt=3&fmt=4 (js, line 149)
+[Info] Content blocker prevented frame displaying https://replit.com/@josh1147/Game-Forge from loading a resource from https://googleads.g.doubleclick.net/pagead/viewthroughconversion/11411994397/?random=1774684968970&cv=11&fst=1774684968970&fmt=3&bg=ffffff&guid=ON&async=1&en=page_view&gtm=45be63q0h2v9171242957za200zd9171242957xec&gcd=13l3l3l3l1l1&dma=0&tag_exp=0~115616985~115938466~115938468~117484252~117884344&u_w=2056&u_h=1329&url=https%3A%2F%2Freplit.com%2F%40josh1147%2FGame-Forge&ref=https%3A%2F%2Freplit.com%2F~&frm=0&tiba=Game%20Forge%20-%20Replit&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1733171978.1767891647&data=event%3Dpage_view (js, line 151)
+[Info] Content blocker prevented frame displaying https://replit.com/@josh1147/Game-Forge from loading a resource from https://stats.g.doubleclick.net/j/collect?t=dc&aip=1&_r=3&v=1&_v=j102&tid=UA-25629695-1&cid=1952790253.1767891647&jid=2130307899&gjid=2030975128&_gid=249546142.1774515815&_u=SCCAgEAjQAAAAGgCIAD~&z=833145716 (analytics.js, line 46)
+[Error] Resource blocked by content blocker
+	wd (analytics.js:46)
+	pe (analytics.js:44:768)
+	(anonymous function) (analytics.js:83:344)
+	(anonymous function) (analytics.js:47:614)
+	(anonymous function) (analytics.js:87:273)
+	(anonymous function) (analytics.js:68:456)
+	(anonymous function) (analytics.js:102:367)
+	(anonymous function) (analytics.js:101:180)
+	N (analytics.js:103:136)
+	(anonymous function) (google-analytics.dynamic.js.gz:1:8640)
+	(anonymous function) (commons.59560acdd69ed701c941.js.gz:1:39287)
+	(anonymous function) (ajs-destination.bundle.8e6b895db75187c55313.js:1:6125)
+	(anonymous function) (sdk.min.js:1:33694)
+	s (sdk.min.js:1:32517)
+[Error] XMLHttpRequest cannot load https://stats.g.doubleclick.net/j/collect?t=dc&aip=1&_r=3&v=1&_v=j102&tid=UA-25629695-1&cid=1952790253.1767891647&jid=2130307899&gjid=2030975128&_gid=249546142.1774515815&_u=SCCAgEAjQAAAAGgCIAD~&z=833145716 due to access control checks.
+	wd (analytics.js:46)
+	pe (analytics.js:44:768)
+	(anonymous function) (analytics.js:83:344)
+	(anonymous function) (analytics.js:47:614)
+	(anonymous function) (analytics.js:87:273)
+	(anonymous function) (analytics.js:68:456)
+	(anonymous function) (analytics.js:102:367)
+	(anonymous function) (analytics.js:101:180)
+	N (analytics.js:103:136)
+	(anonymous function) (google-analytics.dynamic.js.gz:1:8640)
+	(anonymous function) (commons.59560acdd69ed701c941.js.gz:1:39287)
+	(anonymous function) (ajs-destination.bundle.8e6b895db75187c55313.js:1:6125)
+	(anonymous function) (sdk.min.js:1:33694)
+	s (sdk.min.js:1:32517)
+[Error] Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation', 'allow-presentation', 'allow-orientation-lock' are invalid sandbox flags.
+	C (9954129c7dd6dc22.js:2:7241)
+	(anonymous function) (9954129c7dd6dc22.js:2:106339)
+	oO (9954129c7dd6dc22.js:2:110002)
+	oD (9954129c7dd6dc22.js:2:102955)
+	oR (9954129c7dd6dc22.js:2:102765)
+	oS (9954129c7dd6dc22.js:2:97838)
+	E (9954129c7dd6dc22.js:2:1494)
+	L (9954129c7dd6dc22.js:2:2015)
+[Error] The source list for Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+[Error] Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation', 'allow-presentation', 'allow-orientation-lock' are invalid sandbox flags.
+	C (9954129c7dd6dc22.js:2:7241)
+	(anonymous function) (9954129c7dd6dc22.js:2:106339)
+	oO (9954129c7dd6dc22.js:2:110002)
+	oD (9954129c7dd6dc22.js:2:102955)
+	oR (9954129c7dd6dc22.js:2:102765)
+	oS (9954129c7dd6dc22.js:2:97838)
+	E (9954129c7dd6dc22.js:2:1494)
+	L (9954129c7dd6dc22.js:2:2015)
+[Error] The source list for Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+[Error] Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation', 'allow-presentation', 'allow-orientation-lock' are invalid sandbox flags.
+	C (9954129c7dd6dc22.js:2:7241)
+	(anonymous function) (9954129c7dd6dc22.js:2:106339)
+	oO (9954129c7dd6dc22.js:2:110002)
+	oD (9954129c7dd6dc22.js:2:102955)
+	oR (9954129c7dd6dc22.js:2:102765)
+	oS (9954129c7dd6dc22.js:2:97838)
+	E (9954129c7dd6dc22.js:2:1494)
+	L (9954129c7dd6dc22.js:2:2015)
+[Error] The source list for Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
+[Error] Source Map loading errors (x20)
+[Error] Failed to load resource: the server responded with a status of 404 () (9ac1b4d45ad112be.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (3d593c46e14b687b.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (53e0904cf3df82d3.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (b984310ccb8d77e1.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (5f1106ee5fc34e7c.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (edd91123c9ada60e.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (598cbf76ba043135.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (cb31349c7b97618b.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (055c4585ff8e2bc8.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (39c494c33190c838.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (48a5f3a16956cc51.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (b83fa6f9a073faa3.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (0e66f3d2a2b1a88f.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (162b8871bb9d8c46.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (f0f55b0e92e12348.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (206e356d1ba4d584.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (fe59c9ba68392b06.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (9587ae1c568f5b80.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (901874861016865f.css.map, line 0)
+[Error] Failed to load resource: the server responded with a status of 404 () (16d01113db1338d2.css.map, line 0)
+> Selected Element
+< <div class=" useView-module__vOh_Ha__view css-1x49m2l">…</div>
+[Error] Error while parsing the 'sandbox' attribute: 'allow-downloads-without-user-activation', 'allow-presentation', 'allow-orientation-lock' are invalid sandbox flags.
+	C (9954129c7dd6dc22.js:2:7241)
+	(anonymous function) (9954129c7dd6dc22.js:2:106339)
+	oO (9954129c7dd6dc22.js:2:110002)
+	oD (9954129c7dd6dc22.js:2:102955)
+	oR (9954129c7dd6dc22.js:2:102765)
+	oS (9954129c7dd6dc22.js:2:97838)
+	E (9954129c7dd6dc22.js:2:1494)
+	L (9954129c7dd6dc22.js:2:2015)
+[Error] The source list for Content Security Policy directive 'default-src' contains an invalid source: ''unsafe-dynamic''. It will be ignored.
