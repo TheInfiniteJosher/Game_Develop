@@ -284,7 +284,7 @@ function IdeLayout({ projectId }: { projectId: string }) {
                         </TabsList>
                       </div>
                       <div className="flex-1 overflow-hidden bg-background">
-                        <TabsContent value="chat" className="h-full m-0 data-[state=active]:flex flex-col">
+                        <TabsContent forceMount value="chat" className="h-full m-0 data-[state=active]:flex data-[state=inactive]:hidden flex-col">
                           <AiChatPanel projectId={projectId} />
                         </TabsContent>
                         <TabsContent value="assets" className="h-full m-0 overflow-hidden">

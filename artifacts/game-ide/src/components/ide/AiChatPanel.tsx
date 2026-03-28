@@ -507,7 +507,26 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
           </div>
         ))}
 
-        {/* Live streaming response */}
+        {/* Build progress tracker — shown during AND after a build, survives tab switches */}
+        {isBuildWorkflow && (
+          <div className="flex gap-2.5 flex-row">
+            <div className="w-7 h-7 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center shrink-0 mt-1">
+              <Bot className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex flex-col items-start gap-1 w-full max-w-[85%]">
+              <BuildProgressTracker
+                phase={phase}
+                generatingAssets={generatingAssets}
+                generatingAudio={generatingAudio}
+                isBuildComplete={isBuildComplete}
+                filesWritten={filesWritten}
+                writingFiles={writingFiles}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Live streaming response (thinking bubble + text delta + file indicators) */}
         {isStreaming && (
           <div className="flex gap-2.5 flex-row">
             <div className="w-7 h-7 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center shrink-0 mt-1">
@@ -547,17 +566,8 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
                 </Collapsible>
               )}
 
-              {/* Build progress tracker (replaces individual asset/audio blocks during game builds) */}
-              {isBuildWorkflow ? (
-                <BuildProgressTracker
-                  phase={phase}
-                  generatingAssets={generatingAssets}
-                  generatingAudio={generatingAudio}
-                  isBuildComplete={isBuildComplete}
-                  filesWritten={filesWritten}
-                  writingFiles={writingFiles}
-                />
-              ) : (
+              {/* Non-build: inline asset/audio cards */}
+              {!isBuildWorkflow && (
                 <>
                   {generatingAssets.length > 0 && (
                     <div className="w-full max-w-[360px]">
