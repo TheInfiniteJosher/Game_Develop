@@ -57,26 +57,28 @@ const CONSOLE_INJECT_SCRIPT = `<script>
     send('error', ['Unhandled Promise: ' + (e.reason?.message || e.reason)]);
   });
 
-  // Phaser 3 active scene detector — finds the game by duck-typing and polls every 500ms
+  // Phaser 3 active scene detector
   var _lastScene = null;
   var _foundGame = null;
+  function isGame(v) {
+    return v && typeof v === 'object' && v.scene && typeof v.scene.getScenes === 'function';
+  }
   function findPhaserGame() {
     if (_foundGame) return _foundGame;
-    // Common naming conventions
+    // 1. Game exposed by our module-tracker script (most reliable for ESM/Vite projects)
+    if (isGame(window.__phaserGame)) { _foundGame = window.__phaserGame; return _foundGame; }
+    // 2. Common naming conventions
     var candidates = [window.game, window.Game, window.phaserGame, window.phaser];
     for (var i = 0; i < candidates.length; i++) {
-      var c = candidates[i];
-      if (c && c.scene && typeof c.scene.getScenes === 'function') { _foundGame = c; return c; }
+      if (isGame(candidates[i])) { _foundGame = candidates[i]; return _foundGame; }
     }
-    // Scan window properties for any Phaser.Game instance (duck-type: has .scene.getScenes)
+    // 3. Duck-type scan of all window properties (fallback)
     try {
       var keys = Object.keys(window);
       for (var j = 0; j < keys.length; j++) {
         try {
           var v = window[keys[j]];
-          if (v && typeof v === 'object' && v.scene && typeof v.scene.getScenes === 'function') {
-            _foundGame = v; return v;
-          }
+          if (isGame(v)) { _foundGame = v; return _foundGame; }
         } catch(e) {}
       }
     } catch(e) {}
@@ -98,10 +100,24 @@ const CONSOLE_INJECT_SCRIPT = `<script>
 })();
 </script>`;
 
+// Inject a tiny module script that re-imports the main bundle (cached, no re-execution)
+// and exposes its default export (the Phaser.Game instance) as window.__phaserGame.
+// This is necessary for ESM/Vite projects where the game is stored as a module export,
+// not a window property.
+function buildModuleTrackerScript(html: string): string {
+  const match = html.match(/<script\s[^>]*type=["']module["'][^>]*src=["']([^"']+)["'][^>]*>/i)
+    ?? html.match(/<script\s[^>]*src=["']([^"']+)["'][^>]*type=["']module["'][^>]*>/i);
+  if (!match) return "";
+  const src = match[1];
+  return `\n<script type="module">import("${src}").then(function(m){try{var g=m&&m.default;if(g&&g.scene&&typeof g.scene.getScenes==='function')window.__phaserGame=g;}catch(e){}});</script>`;
+}
+
 function injectConsoleScript(html: string): string {
-  if (html.includes("<head>")) return html.replace("<head>", "<head>" + CONSOLE_INJECT_SCRIPT);
-  if (html.includes("<html")) return html.replace(/<html[^>]*>/, (m) => m + CONSOLE_INJECT_SCRIPT);
-  return CONSOLE_INJECT_SCRIPT + html;
+  const tracker = buildModuleTrackerScript(html);
+  const withTracker = tracker ? html.replace("</body>", tracker + "\n</body>") : html;
+  if (withTracker.includes("<head>")) return withTracker.replace("<head>", "<head>" + CONSOLE_INJECT_SCRIPT);
+  if (withTracker.includes("<html")) return withTracker.replace(/<html[^>]*>/, (m) => m + CONSOLE_INJECT_SCRIPT);
+  return CONSOLE_INJECT_SCRIPT + withTracker;
 }
 
 // Build status HTML page shown while vite is compiling or has errored
@@ -224,11 +240,14 @@ app.use("/api/preview/:projectId", async (req, res, next) => {
     return next();
   }
 
-  // Inject console capture for HTML files
+  // Inject console capture for HTML files (always no-cache so injection updates are seen)
   if (entry.endsWith(".html") || entry.endsWith(".htm")) {
     try {
       const html = await fs.readFile(fullPath, "utf-8");
-      return res.setHeader("Content-Type", "text/html").send(injectConsoleScript(html));
+      return res
+        .setHeader("Content-Type", "text/html")
+        .setHeader("Cache-Control", "no-cache, no-store, must-revalidate")
+        .send(injectConsoleScript(html));
     } catch {
       // Fall through to static serving
     }
