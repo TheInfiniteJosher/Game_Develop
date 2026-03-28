@@ -460,14 +460,29 @@ router.post("/ai/chat", async (req, res) => {
 
       const filesToRead = contextFiles || [];
       if (filesToRead.length === 0) {
-        const autoFiles = ["index.html", "game.js", "src/main.js", "main.js"];
+        // Priority order: entry point, then config, then key scene/system files
+        const autoFiles = [
+          "src/main.js",
+          "src/config/gameConfig.js",
+          "src/data/balance.json",
+          "src/scenes/GameScene.js",
+          "src/scenes/UIScene.js",
+          "src/entities/Player.js",
+          "src/entities/Enemy.js",
+          "src/systems/SpawnSystem.js",
+          "src/systems/ScoreSystem.js",
+          // Fallbacks for older single-file projects
+          "index.html",
+          "main.js",
+          "game.js",
+        ];
         for (const f of autoFiles) {
           try {
             await readFile(id, f);
             filesToRead.push(f);
           } catch { /* ignore */ }
+          if (filesToRead.length >= 8) break;
         }
-        filesToRead.splice(5);
       }
 
       for (const filePath of filesToRead.slice(0, 10)) {
