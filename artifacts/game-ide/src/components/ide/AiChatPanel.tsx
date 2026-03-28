@@ -2,16 +2,25 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useGetAiHistory, useClearAiHistory } from "@/hooks/use-api";
 import { useAiChatStream, type AiPhase, type GeneratingAsset, type GeneratingAudio } from "@/hooks/use-ai-chat";
 import { useIde } from "@/hooks/use-ide";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Send, Square, Trash2, ChevronRight, Bot, User, Loader2, FileCode2,
-  Sparkles, ImageIcon, CheckCircle2, AlertCircle, Wand2, Music2, Volume2,
+  Sparkles, CheckCircle2, AlertCircle, Music2, Volume2,
   PenLine, Cpu, Gamepad2, Check,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+function playYeehaw() {
+  try {
+    const audio = new Audio("/sounds/yeehaw.mp3");
+    audio.volume = 1.0;
+    audio.play().catch(() => {});
+  } catch {}
+}
 
 function stripFileBlocks(text: string) {
   return text.replace(/<file path="[^"]+">[\s\S]*?<\/file>/g, "").trim();
@@ -359,6 +368,17 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
   const { data: history } = useGetAiHistory(projectId);
   const clearHistory = useClearAiHistory();
   const { refreshPreview } = useIde();
+  const { toast } = useToast();
+
+  const onGameReady = useCallback(() => {
+    refreshPreview();
+    playYeehaw();
+    toast({
+      title: "🤠 YEEEHAWWW!!!",
+      description: "Your game is locked, loaded, and ready to ride, partner.",
+      duration: 6000,
+    });
+  }, [refreshPreview, toast]);
 
   const {
     sendMessage,
@@ -372,7 +392,7 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
     isBuildWorkflow,
     isBuildComplete,
     filesWritten,
-  } = useAiChatStream(projectId, refreshPreview);
+  } = useAiChatStream(projectId, onGameReady);
 
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
