@@ -9,7 +9,7 @@ import { PreviewPanel } from "@/components/ide/PreviewPanel";
 import { AiChatPanel } from "@/components/ide/AiChatPanel";
 import { ChangesPanel } from "@/components/ide/ChangesPanel";
 import { AssetStudio } from "@/components/ide/AssetStudio";
-import { ChevronLeft, FileCode2, X, Terminal, Palette, Download, Globe, GlobeLock, Copy, Check, ChevronDown } from "lucide-react";
+import { ChevronLeft, FileCode2, X, Terminal, Palette, Download, Globe, GlobeLock, Copy, Check, ChevronDown, LogOut, User } from "lucide-react";
 import { useGetProject, usePublishProject, useUnpublishProject } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@workspace/replit-auth-web";
 
 interface ConsoleMessage {
   level: "log" | "error" | "warn";
@@ -32,6 +33,7 @@ function IdeLayout({ projectId }: { projectId: string }) {
   const [consoleLogs, setConsoleLogs] = useState<ConsoleMessage[]>([]);
   const consoleEndRef = useRef<HTMLDivElement>(null);
   const [, navigate] = useLocation();
+  const { user, isAuthenticated, logout } = useAuth();
 
   const { mutate: publish, isPending: publishing } = usePublishProject();
   const { mutate: unpublish, isPending: unpublishing } = useUnpublishProject();
@@ -166,6 +168,31 @@ function IdeLayout({ projectId }: { projectId: string }) {
               <Globe className="h-3.5 w-3.5" />
               {publishing ? "Publishing…" : "Publish"}
             </Button>
+          )}
+
+          {/* User avatar */}
+          {isAuthenticated && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full ml-1">
+                  {user?.profileImageUrl ? (
+                    <img src={user.profileImageUrl} alt="avatar" className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    <User className="h-4 w-4" />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {(user?.firstName || user?.email) && (
+                  <DropdownMenuItem disabled className="text-muted-foreground text-xs">
+                    {user?.firstName ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}` : user?.email}
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
+                  <LogOut className="w-4 h-4 mr-2" /> Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
       </header>

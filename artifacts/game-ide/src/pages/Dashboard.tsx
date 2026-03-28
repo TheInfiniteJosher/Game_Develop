@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { Plus, Upload, FolderGit2, MoreVertical, Pencil, Copy, Trash2, Gamepad2 } from "lucide-react";
+import { Plus, Upload, FolderGit2, MoreVertical, Pencil, Copy, Trash2, Gamepad2, LogIn, LogOut, User } from "lucide-react";
 import { 
   useListProjects, 
   useCreateProject, 
@@ -15,8 +15,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@workspace/replit-auth-web";
 
 export default function Dashboard() {
+  const { user, isLoading: authLoading, isAuthenticated, login, logout } = useAuth();
   const { data: projects, isLoading } = useListProjects();
   const createProject = useCreateProject();
   const deleteProject = useDeleteProject();
@@ -75,24 +77,64 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div>
-              <input type="file" id="zip-upload" accept=".zip" className="hidden" onChange={handleZipUpload} />
-              <Label htmlFor="zip-upload" className="cursor-pointer">
-                <div className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 font-medium text-sm transition-colors border border-border shadow-sm">
-                  <Upload className="w-4 h-4" />
-                  Upload ZIP
+            {isAuthenticated ? (
+              <>
+                <div>
+                  <input type="file" id="zip-upload" accept=".zip" className="hidden" onChange={handleZipUpload} />
+                  <Label htmlFor="zip-upload" className="cursor-pointer">
+                    <div className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80 font-medium text-sm transition-colors border border-border shadow-sm">
+                      <Upload className="w-4 h-4" />
+                      Upload ZIP
+                    </div>
+                  </Label>
                 </div>
-              </Label>
-            </div>
-            <Button onClick={() => setIsCreateOpen(true)} className="gap-2 shadow-lg shadow-primary/20">
-              <Plus className="w-4 h-4" />
-              New Project
-            </Button>
+                <Button onClick={() => setIsCreateOpen(true)} className="gap-2 shadow-lg shadow-primary/20">
+                  <Plus className="w-4 h-4" />
+                  New Project
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon" className="rounded-full w-9 h-9">
+                      {user?.profileImageUrl ? (
+                        <img src={user.profileImageUrl} alt="avatar" className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        <User className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {(user?.firstName || user?.email) && (
+                      <DropdownMenuItem disabled className="text-muted-foreground text-xs">
+                        {user?.firstName ? `${user.firstName}${user.lastName ? ' ' + user.lastName : ''}` : user?.email}
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
+                      <LogOut className="w-4 h-4 mr-2" /> Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : !authLoading ? (
+              <Button onClick={login} className="gap-2">
+                <LogIn className="w-4 h-4" />
+                Sign in
+              </Button>
+            ) : null}
           </div>
         </header>
 
         {/* Project Grid */}
-        {isLoading ? (
+        {!isAuthenticated && !authLoading ? (
+          <div className="py-24 text-center border-2 border-dashed border-border rounded-2xl bg-card/50 flex flex-col items-center">
+            <Gamepad2 className="w-16 h-16 text-muted-foreground/50 mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Sign in to get started</h3>
+            <p className="text-muted-foreground max-w-sm mb-6">Create and manage your game projects. Sign in to save your work and access your projects from anywhere.</p>
+            <Button onClick={login} className="gap-2">
+              <LogIn className="w-4 h-4" />
+              Sign in
+            </Button>
+          </div>
+        ) : isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3].map(i => <div key={i} className="h-40 rounded-xl bg-card border border-border animate-pulse" />)}
           </div>

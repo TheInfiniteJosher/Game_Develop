@@ -24,12 +24,16 @@ function slugify(name: string, id: string): string {
 
 const router: IRouter = Router();
 
-// List all projects
+// List all projects — authenticated users see only their own; anonymous see none
 router.get("/", async (req, res) => {
   try {
+    if (!req.isAuthenticated()) {
+      return res.json([]);
+    }
     const projects = await db
       .select()
       .from(projectsTable)
+      .where(eq(projectsTable.userId, req.user.id))
       .orderBy(projectsTable.updatedAt);
     res.json(projects.reverse());
   } catch (err) {
@@ -38,8 +42,11 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Create project
+// Create project — requires auth
 router.post("/", async (req, res) => {
+  if (!req.isAuthenticated()) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
   try {
     const { name, description } = req.body;
     if (!name) return res.status(400).json({ error: "Name is required" });
@@ -49,7 +56,7 @@ router.post("/", async (req, res) => {
 
     const [project] = await db
       .insert(projectsTable)
-      .values({ id, name, description: description || null, fileCount: 0 })
+      .values({ id, userId: req.user.id, name, description: description || null, fileCount: 0 })
       .returning();
 
     res.status(201).json(project);

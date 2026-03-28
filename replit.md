@@ -106,9 +106,26 @@ React + Vite frontend for the AI Game Dev IDE.
 - Dark IDE theme: `src/index.css` (CSS variables for charcoal backgrounds, blue accent)
 - Vite proxy: `/api/*` and `/preview/*` are proxied to the API server (port 8080 by default, configurable via `API_PORT` env var)
 
+### `lib/replit-auth-web` (`@workspace/replit-auth-web`)
+
+Browser auth helper library. Exports `useAuth()` React hook that:
+- Fetches `/api/auth/user` (with credentials) to resolve the current session
+- `login()` navigates to `/api/login?returnTo=<BASE_URL>`
+- `logout()` navigates to `/api/logout`
+
+## Auth Architecture
+
+- **OIDC provider**: Replit (configured via `REPLIT_DOMAINS`, `REPLIT_DEPLOYMENT`, `SESSION_SECRET` env vars)
+- **Sessions**: Stored in PostgreSQL `sessions` table (via `lib/auth.ts` / `createSession` / `getSession`)
+- **Users**: Stored in PostgreSQL `users` table; upserted on OIDC callback
+- **Middleware**: `authMiddleware` (in `middlewares/authMiddleware.ts`) runs on every request, populates `req.user` + `req.isAuthenticated()`
+- **Auth routes** (mounted on authRouter): `GET /api/auth/user`, `GET /api/login`, `GET /api/callback`, `GET /api/logout`, `POST /api/mobile-auth/token-exchange`, `POST /api/mobile-auth/logout`
+- **Project isolation**: Projects are scoped to `userId`; list/create require auth; anonymous users see an empty list and get 401 on create
+
 ## AI Game Dev IDE Features
 
-- **Dashboard**: Create/upload ZIP/manage projects; rename, duplicate, delete from dropdown menu
+- **Dashboard**: Requires sign-in (Replit OIDC). Shows auth gate with "Sign in" button when logged out. Authenticated users see their own projects with avatar + sign-out menu.
+- Create/upload ZIP/manage projects; rename, duplicate, delete from dropdown menu
 - **VS Code-style File Explorer**: Context menu (rename, delete, duplicate, new file, new folder), drag-and-drop upload
 - **Monaco Code Editor**: Tabbed multi-file editing with syntax highlighting
 - **Live Game Preview**: iframe serves from `/preview/:projectId/` with console.log injection (postMessage to parent)
