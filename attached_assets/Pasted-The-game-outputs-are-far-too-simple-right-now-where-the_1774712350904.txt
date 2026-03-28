@@ -1,0 +1,81 @@
+The game outputs are far too simple right now. - where the agent attempts to cram everything into one index.html file.  Which makes for extremely boring gameplay, naturally.
+
+So unless otherwise stated by the user, please make it so the AI assistant adheres to these guidelines after receiving initial prompt for new projects, and confirming art / stylistic direction
+
+—
+GameForge Structured Build Prompt
+objective: Create a complete Phaser 3 game project using Vite as the build system.
+The output must follow a modular multi-file architecture suitable for iteration and expansion.
+PROJECT STRUCTURE
+Use the following folder structure:
+src/ scenes/ entities/ systems/ ui/ assets/ data/
+Include separate files for major components rather than placing all logic in index.html.
+SCENES
+Implement multiple Phaser scenes:
+BootScene for initialization PreloadScene for asset loading MenuScene for title screen GameScene for core gameplay loop UIScene for HUD and score display GameOverScene for restart flow
+GAME ARCHITECTURE
+Use ES module imports between files.
+Each major game object must be its own class:
+Player Enemy Projectile Pickup
+GAMEPLAY SYSTEMS
+Implement reusable systems:
+input handling collision handling enemy spawning score tracking difficulty scaling
+ASSETS
+Generate placeholder art assets as separate files in the assets directory.
+Do not embed assets inline as base64.
+CONFIGURATION
+Store tunable values in data files such as:
+enemy speed spawn rate player movement speed difficulty scaling values
+VITE SUPPORT
+Ensure the project builds correctly with:
+npm install npm run build
+Use relative asset paths compatible with vite build --base ./
+GOAL
+Produce a scalable, maintainable project suitable for expansion into a commercial game.
+
+It’s common for phaser builds to have this target architecture. And this should be a typical goal when building
+
+game-project/
+│
+├── index.html
+├── package.json
+├── vite.config.js
+│
+├── src/
+│   ├── main.js
+│   │
+│   ├── config/
+│   │   └── gameConfig.js
+│   │
+│   ├── scenes/
+│   │   ├── BootScene.js
+│   │   ├── PreloadScene.js
+│   │   ├── MenuScene.js
+│   │   ├── GameScene.js
+│   │   ├── UIScene.js
+│   │   └── GameOverScene.js
+│   │
+│   ├── entities/
+│   │   ├── Player.js
+│   │   ├── Enemy.js
+│   │   ├── Projectile.js
+│   │   └── Pickup.js
+│   │
+│   ├── systems/
+│   │   ├── InputSystem.js
+│   │   ├── CollisionSystem.js
+│   │   ├── SpawnSystem.js
+│   │   └── ScoreSystem.js
+│   │
+│   ├── ui/
+│   │   ├── HUD.js
+│   │   └── Button.js
+│   │
+│   ├── assets/
+│   │   ├── sprites/
+│   │   ├── audio/
+│   │   └── fonts/
+│   │
+│   └── data/
+│       ├── levels.json
+│       └── balance.json
