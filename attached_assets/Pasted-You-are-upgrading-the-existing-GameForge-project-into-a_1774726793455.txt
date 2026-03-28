@@ -1,0 +1,267 @@
+You are upgrading the existing GameForge project into a persistent AI-powered game development studio.
+
+Your goal is to transform GameForge into an AI system capable of designing and building complete modular games from simple prompts.
+
+You must NOT break existing functionality.
+You must extend the architecture in a scalable way.
+
+--------------------------------------------------
+PRIMARY OBJECTIVE
+--------------------------------------------------
+
+GameForge must behave like a senior game designer + technical director.
+
+The AI must:
+• understand the structure of the engine
+• generate modular game systems
+• maintain consistent architecture
+• expand existing systems without rewriting them
+• build complete playable games
+
+The AI should think in terms of SYSTEMS, not single files.
+
+--------------------------------------------------
+ARCHITECTURE REQUIREMENTS
+--------------------------------------------------
+
+GameForge must use modular ES6 architecture.
+
+Follow these rules:
+
+1. No large monolithic logic blocks in index.html
+2. Each major system must live in its own file
+3. Systems must be reusable across games
+4. Game logic must be separate from engine logic
+5. All systems must be extendable
+6. Avoid hardcoded values where possible
+7. Prefer configuration driven design
+8. Preserve compatibility with existing WorldManager and Level structure
+
+--------------------------------------------------
+REQUIRED ENGINE STRUCTURE
+--------------------------------------------------
+
+Create or verify the following folder structure:
+
+/engine
+  Core.js
+  EventBus.js
+  StateManager.js
+  InputManager.js
+  AudioManager.js
+  RenderManager.js
+  PhysicsEngine.js
+  Entity.js
+  Component.js
+  System.js
+
+/game
+  GameConfig.js
+  GameBootstrap.js
+  MechanicsRegistry.js
+  FeatureRegistry.js
+
+/world
+  WorldManager.js
+  LevelManager.js
+  ProgressionManager.js
+
+/ai
+  GameDesignerAgent.md
+  SystemGenerationRules.md
+  CodingStandards.md
+  Architecture.md
+
+/docs
+  GAME_FORGE_SPEC.md
+  ARCHITECTURE.md
+  DESIGN_PHILOSOPHY.md
+  MECHANICS_LIBRARY.md
+
+--------------------------------------------------
+AI BEHAVIOR SPECIFICATION
+--------------------------------------------------
+
+Create documentation files that define how the AI should behave when generating code.
+
+GameForge AI must follow this pipeline:
+
+STEP 1 — CONCEPT
+Define:
+• core mechanic
+• player interaction loop
+• progression model
+• difficulty scaling approach
+• visual feedback opportunities
+• replayability hooks
+
+STEP 2 — SYSTEM DESIGN
+List required systems before coding.
+
+Examples:
+• player controller
+• enemy AI
+• collision
+• health system
+• scoring system
+• save/load system
+• UI system
+• audio feedback system
+
+STEP 3 — FILE STRUCTURE
+Always define file tree before generating code.
+
+STEP 4 — IMPLEMENTATION
+Generate one system per file.
+Each file must:
+• export a class
+• be reusable
+• contain comments explaining extension points
+
+STEP 5 — INTEGRATION
+Wire systems together using EventBus or StateManager.
+
+--------------------------------------------------
+DESIGN PHILOSOPHY
+--------------------------------------------------
+
+GameForge prioritizes:
+
+MECHANICS FIRST
+Gameplay must be functional before visual polish.
+
+SCALABILITY
+Systems must support future expansion.
+
+JUICE
+Games should include satisfying feedback:
+• animation
+• particles
+• sound
+• score feedback
+• responsive controls
+
+REPLAYABILITY
+Games should include:
+• procedural elements OR
+• progression systems OR
+• increasing difficulty curves
+
+--------------------------------------------------
+CODING STANDARDS
+--------------------------------------------------
+
+Use ES6 modules.
+
+Use class based design.
+
+Avoid global variables.
+
+Prefer dependency injection.
+
+Keep systems loosely coupled.
+
+Use event-driven communication where possible.
+
+Each system must include:
+
+• constructor
+• init()
+• update()
+• destroy()
+
+--------------------------------------------------
+MECHANICS REGISTRY
+--------------------------------------------------
+
+Create a file that tracks reusable mechanics.
+
+Example:
+
+MechanicsRegistry.js
+
+export const mechanics = {
+
+movement:
+  ["topDown",
+   "platformer",
+   "physicsBased"],
+
+combat:
+  ["projectile",
+   "melee",
+   "areaEffect"],
+
+progression:
+  ["xp",
+   "levelUps",
+   "upgrades"],
+
+difficulty:
+  ["spawnRateScaling",
+   "enemySpeedScaling"]
+
+}
+
+AI should reuse these patterns when possible.
+
+--------------------------------------------------
+PERSISTENT AI MEMORY
+--------------------------------------------------
+
+Ensure the AI can reference project knowledge by maintaining:
+
+GAME_FORGE_SPEC.md
+ARCHITECTURE.md
+MECHANICS_LIBRARY.md
+
+These files should contain:
+
+• description of engine systems
+• coding conventions
+• naming conventions
+• existing mechanics
+• extension patterns
+
+These documents will act as long-term context for the AI.
+
+--------------------------------------------------
+OUTPUT REQUIREMENTS
+--------------------------------------------------
+
+When generating new features:
+
+Always provide:
+
+1. file tree changes
+2. complete working code
+3. integration instructions
+4. comments explaining extensibility
+
+Do NOT output pseudo code.
+
+Do NOT suggest partial snippets.
+
+Output production-expandable code.
+
+--------------------------------------------------
+INITIAL TASK
+--------------------------------------------------
+
+Analyze the existing GameForge repository.
+
+Then:
+
+1. create missing documentation files
+2. create missing engine scaffolding files
+3. refactor any monolithic logic into modular systems
+4. ensure compatibility with WorldManager hierarchy
+5. prepare the repo so future prompts can generate complete games reliably
+
+Do NOT remove working functionality.
+
+Only improve structure and scalability.
+
+--------------------------------------------------
+END OF DIRECTIVE
+--------------------------------------------------
