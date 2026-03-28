@@ -79,9 +79,34 @@ function useElapsedSeconds(startedAt: number | undefined, active: boolean): numb
 
 export function PreviewPanel({ projectId }: { projectId: string }) {
   const { data } = useGetPreviewEntry(projectId);
-  const { previewRefreshKey, refreshPreview } = useIde();
+  const { previewRefreshKey, refreshPreview, openFile } = useIde();
   const logsEndRef = useRef<HTMLDivElement>(null);
   const [activeScene, setActiveScene] = useState<string | null>(null);
+  const [sceneLoading, setSceneLoading] = useState(false);
+
+  // Find and open the file for a given scene key
+  const handleSceneClick = useCallback(async (sceneLabel: string) => {
+    // If multiple scenes are shown (e.g. "Boot + Main"), take the first one
+    const sceneName = sceneLabel.split(/\s*\+\s*/)[0].trim();
+    if (!sceneName || sceneLoading) return;
+    setSceneLoading(true);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/files/search?q=${encodeURIComponent(sceneName)}`);
+      const results: Array<{ path: string; name: string; matches: Array<{ line: number; text: string }> }> = await res.json();
+      if (!results.length) return;
+
+      // Rank: exact filename stem match > stem contains scene name > any content match
+      const stem = (p: string) => p.replace(/\.[^.]+$/, "").toLowerCase();
+      const exact = results.find(r => stem(r.name) === sceneName.toLowerCase());
+      const partial = results.find(r => stem(r.name).includes(sceneName.toLowerCase()));
+      const best = exact ?? partial ?? results[0];
+      openFile(best.path);
+    } catch {
+      // silently ignore
+    } finally {
+      setSceneLoading(false);
+    }
+  }, [projectId, openFile, sceneLoading]);
 
   // Listen for Phaser scene change messages from the preview iframe
   useEffect(() => {
@@ -286,11 +311,18 @@ export function PreviewPanel({ projectId }: { projectId: string }) {
               sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"
             />
             {activeScene && (
-              <div className="absolute bottom-0 left-0 right-0 h-6 bg-black/65 backdrop-blur-sm flex items-center px-3 gap-2 text-xs z-10 select-none pointer-events-none">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0 animate-pulse" />
+              <button
+                className="absolute bottom-0 left-0 right-0 h-6 bg-black/65 backdrop-blur-sm flex items-center px-3 gap-2 text-xs z-10 select-none hover:bg-black/80 transition-colors group w-full text-left"
+                onClick={() => handleSceneClick(activeScene)}
+                title={`Open scene file: ${activeScene}`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full bg-green-400 shrink-0 ${sceneLoading ? "animate-spin" : "animate-pulse"}`} />
                 <span className="text-white/50 font-medium">Scene</span>
-                <span className="font-mono text-blue-300 font-semibold truncate">{activeScene}</span>
-              </div>
+                <span className="font-mono text-blue-300 font-semibold truncate group-hover:text-blue-200 group-hover:underline">
+                  {activeScene}
+                </span>
+                {sceneLoading && <span className="ml-auto text-white/30 text-[10px]">opening…</span>}
+              </button>
             )}
           </>
         ) : (
