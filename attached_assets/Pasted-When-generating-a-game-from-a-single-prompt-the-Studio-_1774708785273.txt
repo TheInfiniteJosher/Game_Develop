@@ -1,0 +1,59 @@
+When generating a game from a single prompt, the Studio AI should automatically infer and implement a complete playable gameplay loop rather than producing a visual prototype.
+Each generated game must include:
+CORE GAME LOOP
+	1	player objective clear goal that can be achieved repeatedly
+	2	challenge mechanic something that creates difficulty or tension
+	3	fail condition how the player loses
+	4	scoring system numeric or progress-based feedback
+	5	progression difficulty increases over time
+	6	feedback systems visual or audio response to player actions
+	7	basic juice simple animation or motion feedback
+GAME DESIGN INTERPRETATION RULES
+When a prompt describes a scenario, the AI should infer player verbs.
+Example:
+“delivery driver”
+verbs: move deliver avoid obstacles manage time
+“zombie customers needing coffee”
+verbs: aim shoot projectile restore NPC state
+“crowds waiting in line”
+verbs: prioritize targets optimize route manage increasing demand
+DEFAULT MECHANICS TOOLKIT
+The Studio AI should choose at least 3 mechanics:
+movement mechanic interaction mechanic challenge mechanic progression mechanic scoring mechanic
+NPC BEHAVIOR
+NPCs should have state changes.
+Example:
+waiting impatient served leaving angry
+VISUAL SCALE NORMALIZATION
+When AI-generated assets are used:
+auto-scale sprites to consistent world units.
+default sprite size target:
+32px 48px 64px
+prevent oversized assets from filling entire screen.
+SPAWN SYSTEMS
+Games should include repeating events:
+enemy spawning customer spawning pickup spawning obstacle spawning
+not single-instance objects.
+CAMERA FRAMING
+Game view should:
+clearly show player show interactive objects maintain consistent zoom level
+ASSET COMPLETENESS
+Minimum asset list per game:
+player sprite interactive NPC sprite background UI text interactive item sprite
+OPTIONAL:
+VFX UI icons animations
+DELIVERABLE STANDARD
+After one prompt, the game should:
+be playable immediately have a clear objective have repeatable gameplay loop have score or progress feedback include at least one challenge system use generated assets feel like a basic arcade game
+not just a visual scene.
+
+——
+Prefer arcade-style mechanics when prompt does not specify genre.
+Examples:
+collectathon
+shooter
+time management
+avoidance
+survival
+delivery optimization
+Arcade loops produce fast playable prototypes.
