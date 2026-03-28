@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { restoreAllProjectsFromGcs } from "./services/gcs-sync.js";
 
 const rawPort = process.env["PORT"];
 
@@ -15,11 +16,15 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
-  }
-
-  logger.info({ port }, "Server listening");
-});
+// Restore project files from GCS before accepting requests
+restoreAllProjectsFromGcs()
+  .catch((err) => logger.error({ err }, "GCS restore error – continuing anyway"))
+  .finally(() => {
+    app.listen(port, (err) => {
+      if (err) {
+        logger.error({ err }, "Error listening on port");
+        process.exit(1);
+      }
+      logger.info({ port }, "Server listening");
+    });
+  });

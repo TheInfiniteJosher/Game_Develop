@@ -11,6 +11,7 @@ import {
   detectEntryFile,
   copyProjectFiles,
 } from "../services/filesystem.js";
+import { deleteProjectFromGcs } from "../services/gcs-sync.js";
 
 function slugify(name: string, id: string): string {
   const base = name
@@ -123,6 +124,9 @@ router.delete("/:id", async (req, res) => {
       const { rm } = await import("fs/promises");
       await rm(getProjectRoot(id), { recursive: true, force: true });
     } catch { /* ignore */ }
+
+    // Delete from GCS (fire-and-forget)
+    deleteProjectFromGcs(id).catch(() => {});
 
     res.status(204).send();
   } catch (err) {

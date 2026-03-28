@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import path from "path";
 import fs from "fs/promises";
 import { getProjectRoot } from "./filesystem.js";
+import { saveFileToGcs } from "./gcs-sync.js";
 
 const openai = new OpenAI({
   baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
@@ -122,6 +123,9 @@ export async function generateAssetForProject(
 
   const relPath = path.join(folder, finalFilename).replace(/\\/g, "/");
 
+  // Persist to GCS so the file survives redeployment
+  saveFileToGcs(projectId, relPath, imageBuffer).catch(() => {});
+
   // Compute frame dimensions for sprite sheets
   let frameWidth: number | undefined;
   let frameHeight: number | undefined;
@@ -140,7 +144,9 @@ export async function generateAssetForProject(
     frameHeight,
     createdAt: new Date().toISOString(),
   };
-  await fs.writeFile(finalPath.replace(/\.png$/, ".meta.json"), JSON.stringify(meta, null, 2));
+  const metaJson = JSON.stringify(meta, null, 2);
+  await fs.writeFile(finalPath.replace(/\.png$/, ".meta.json"), metaJson);
+  saveFileToGcs(projectId, relPath.replace(/\.png$/, ".meta.json"), metaJson).catch(() => {});
 
   return {
     path: relPath,

@@ -2,6 +2,7 @@ import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";
 import { getProjectRoot } from "./filesystem.js";
+import { saveFileToGcs } from "./gcs-sync.js";
 
 // ─── ElevenLabs Sound Generation ──────────────────────────────────────────────
 
@@ -148,6 +149,9 @@ export async function generateAudioForProject(
 
   const relPath = path.join(folder, filename).replace(/\\/g, "/");
 
+  // Persist to GCS so the file survives redeployment
+  saveFileToGcs(projectId, relPath, audioBuffer).catch(() => {});
+
   // Save metadata
   const meta = {
     audioName,
@@ -160,7 +164,9 @@ export async function generateAudioForProject(
     description: params.description,
     createdAt: new Date().toISOString(),
   };
-  await fs.writeFile(fullPath.replace(/\.\w+$/, ".meta.json"), JSON.stringify(meta, null, 2));
+  const metaJson = JSON.stringify(meta, null, 2);
+  await fs.writeFile(fullPath.replace(/\.\w+$/, ".meta.json"), metaJson);
+  saveFileToGcs(projectId, relPath.replace(/\.\w+$/, ".meta.json"), metaJson).catch(() => {});
 
   const phaserKey = slugify(audioName);
   const phaserLoadSnippet = `this.load.audio('${phaserKey}', '${relPath}')`;

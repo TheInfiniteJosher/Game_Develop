@@ -1,6 +1,11 @@
 import fs from "fs/promises";
 import path from "path";
 import { existsSync } from "fs";
+import {
+  saveFileToGcs,
+  deleteFileFromGcs,
+  deleteFolderFromGcs,
+} from "./gcs-sync.js";
 
 const STORAGE_ROOT = process.env.PROJECTS_STORAGE || "/tmp/game-ide-projects";
 
@@ -91,6 +96,8 @@ export async function writeFile(
   const fullPath = path.join(getProjectRoot(projectId), filePath);
   await fs.mkdir(path.dirname(fullPath), { recursive: true });
   await fs.writeFile(fullPath, content, "utf-8");
+  // Fire-and-forget GCS persistence – never blocks or fails the local write
+  saveFileToGcs(projectId, filePath, content).catch(() => {});
 }
 
 export async function deleteFileOrFolder(
@@ -101,8 +108,10 @@ export async function deleteFileOrFolder(
   const stat = await fs.stat(fullPath);
   if (stat.isDirectory()) {
     await fs.rm(fullPath, { recursive: true });
+    deleteFolderFromGcs(projectId, filePath).catch(() => {});
   } else {
     await fs.unlink(fullPath);
+    deleteFileFromGcs(projectId, filePath).catch(() => {});
   }
 }
 
@@ -111,9 +120,34 @@ export async function renameFileOrFolder(
   oldPath: string,
   newName: string
 ): Promise<void> {
-  const oldFull = path.join(getProjectRoot(projectId), oldPath);
+  const root = getProjectRoot(projectId);
+  const oldFull = path.join(root, oldPath);
   const newFull = path.join(path.dirname(oldFull), newName);
   await fs.rename(oldFull, newFull);
+
+  // Reflect rename in GCS: copy all objects under old prefix to new prefix then delete old
+  const newRelPath = path.join(path.dirname(oldPath), newName);
+  try {
+    const stat = await fs.stat(newFull);
+    if (stat.isDirectory()) {
+      // Read the renamed directory tree and re-upload each file
+      const entries = await collectFiles(newFull, newFull);
+      await Promise.all(
+        entries.map(async ({ absPath, relInDir }) => {
+          const newGcsPath = `${newRelPath}/${relInDir}`;
+          const buf = await fs.readFile(absPath);
+          await saveFileToGcs(projectId, newGcsPath, buf).catch(() => {});
+          await deleteFileFromGcs(projectId, `${oldPath}/${relInDir}`).catch(() => {});
+        })
+      );
+    } else {
+      const content = await fs.readFile(newFull, "utf-8");
+      await saveFileToGcs(projectId, newRelPath, content).catch(() => {});
+      await deleteFileFromGcs(projectId, oldPath).catch(() => {});
+    }
+  } catch {
+    // best effort
+  }
 }
 
 export async function moveFileOrFolder(
@@ -126,6 +160,47 @@ export async function moveFileOrFolder(
   const destFull = path.join(sourceRoot, destinationFolder, path.basename(sourcePath));
   await fs.mkdir(path.dirname(destFull), { recursive: true });
   await fs.rename(sourceFull, destFull);
+
+  // Reflect move in GCS
+  const newRelPath = path.join(destinationFolder, path.basename(sourcePath));
+  try {
+    const stat = await fs.stat(destFull);
+    if (stat.isDirectory()) {
+      const entries = await collectFiles(destFull, destFull);
+      await Promise.all(
+        entries.map(async ({ absPath, relInDir }) => {
+          const buf = await fs.readFile(absPath);
+          await saveFileToGcs(projectId, `${newRelPath}/${relInDir}`, buf).catch(() => {});
+          await deleteFileFromGcs(projectId, `${sourcePath}/${relInDir}`).catch(() => {});
+        })
+      );
+    } else {
+      const content = await fs.readFile(destFull, "utf-8");
+      await saveFileToGcs(projectId, newRelPath, content).catch(() => {});
+      await deleteFileFromGcs(projectId, sourcePath).catch(() => {});
+    }
+  } catch {
+    // best effort
+  }
+}
+
+// Helper: walk a directory and return all files with paths relative to baseDir
+async function collectFiles(
+  dir: string,
+  baseDir: string
+): Promise<Array<{ absPath: string; relInDir: string }>> {
+  const results: Array<{ absPath: string; relInDir: string }> = [];
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const abs = path.join(dir, entry.name);
+    const rel = path.relative(baseDir, abs);
+    if (entry.isDirectory()) {
+      results.push(...(await collectFiles(abs, baseDir)));
+    } else {
+      results.push({ absPath: abs, relInDir: rel });
+    }
+  }
+  return results;
 }
 
 export async function duplicateFile(
@@ -147,6 +222,8 @@ export async function duplicateFile(
     counter++;
   }
   await fs.copyFile(sourceFull, destFull);
+  const content = await fs.readFile(destFull, "utf-8").catch(() => null);
+  if (content !== null) saveFileToGcs(projectId, destRelPath, content).catch(() => {});
 }
 
 export async function createFolder(
