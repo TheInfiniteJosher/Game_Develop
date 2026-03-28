@@ -675,6 +675,13 @@ router.post("/ai/chat", async (req, res) => {
     let fileTreeStr = "";
     let fileContentsStr = "";
 
+    // Detect whether this project already has generated assets / game files.
+    // If it does, we must NOT offer the asset-generation tools in Round 1 —
+    // that is what causes the AI to re-generate assets on every follow-up message.
+    const assetsDir = `${root}/assets`;
+    const hasExistingAssets = existsSync(assetsDir);
+    const hasExistingGame  = existsSync(`${root}/index.html`) || existsSync(`${root}/src/main.js`);
+
     if (existsSync(root)) {
       const tree = await buildFileTree(root);
       fileTreeStr = JSON.stringify(tree, null, 2);
@@ -736,6 +743,27 @@ router.post("/ai/chat", async (req, res) => {
       },
     ];
 
+    // ── Critical: prevent re-generation of assets that already exist ──────────
+    // The "TOOLS FIRST" rule in the system prompt causes the AI to call
+    // generate_game_asset on EVERY user message if we allow tools. When this
+    // project already has assets or game files, we inject an overriding instruction
+    // so the AI writes/edits code only — no asset re-generation.
+    if (hasExistingAssets || hasExistingGame) {
+      chatMessages.push({
+        role: "system",
+        content: [
+          "EDIT / CONTINUE MODE — OVERRIDE THE TOOLS-FIRST RULE:",
+          "This project already has generated assets and/or game files (see file tree above).",
+          "DO NOT call generate_game_asset or generate_game_audio.",
+          "DO NOT regenerate any assets — they already exist on disk and are ready to use.",
+          "Your ONLY job is to write or update game code using <file path=\"...\"> blocks.",
+          "If the game is incomplete, write ALL remaining files now in a single response.",
+          "If the user is asking for a fix or change, apply it and output the updated file(s).",
+          "Output ONLY <file path=\"...\"> blocks plus a short closing note. No asset calls.",
+        ].join("\n"),
+      });
+    }
+
     for (const msg of history.slice(0, -1)) {
       chatMessages.push({
         role: msg.role as "user" | "assistant",
@@ -759,19 +787,27 @@ router.post("/ai/chat", async (req, res) => {
     type PartialToolCall = { id: string; name: string; args: string };
     const toolCallsAccum: Record<number, PartialToolCall> = {};
 
+    // Hard-block tool calls when the project already has assets or game files.
+    // Without this, the AI re-generates all assets on every follow-up message
+    // because the TOOLS FIRST system prompt rule tells it to.
+    const allowTools = !hasExistingAssets && !hasExistingGame;
+
     const stream1 = await openai.chat.completions.create({
       model: "gpt-4o",
       max_tokens: 16000,
       messages: chatMessages,
-      tools: process.env.ELEVENLABS_API_KEY
-        ? [GAME_ASSET_TOOL, GAME_AUDIO_TOOL]
-        : [GAME_ASSET_TOOL],
-      tool_choice: "auto",
+      ...(allowTools ? {
+        tools: process.env.ELEVENLABS_API_KEY
+          ? [GAME_ASSET_TOOL, GAME_AUDIO_TOOL]
+          : [GAME_ASSET_TOOL],
+        tool_choice: "auto",
+      } : {}),
       stream: true,
     });
 
     let finishReason: string | null = null;
     let isFirstChunk = true;
+    let lastChunkContent = ""; // for continuation in edit mode
 
     for await (const chunk of stream1) {
       const delta = chunk.choices[0]?.delta;
@@ -782,6 +818,7 @@ router.post("/ai/chat", async (req, res) => {
           sendEvent({ type: "thinking_done" });
           isFirstChunk = false;
         }
+        lastChunkContent += delta.content;
         fullResponse += delta.content;
         sendEvent({ type: "delta", content: delta.content });
       }
@@ -803,9 +840,47 @@ router.post("/ai/chat", async (req, res) => {
       }
     }
 
+    // ── Round 1.5: edit mode continuation (no tools, hit token limit) ───────
+    // When an existing project is being edited, tools are disabled so Round 1
+    // IS the code-writing round. If it was cut off, loop until done.
+    const toolCallsList0 = Object.values(toolCallsAccum);
+    if (finishReason === "length" && !allowTools && toolCallsList0.length === 0) {
+      const r15Messages = [...chatMessages];
+      let r15Iteration = 0;
+      while (r15Iteration < 5 && finishReason === "length") {
+        r15Messages.push({ role: "assistant", content: lastChunkContent });
+        r15Messages.push({
+          role: "user",
+          content: "CONTINUE — do not stop until every file is written. Do not repeat <file> blocks already output. Output only the remaining <file path=\"...\"> blocks, then a short closing line.",
+        });
+        sendEvent({ type: "thinking", content: "Continuing to write remaining files..." });
+
+        const streamContinue = await openai.chat.completions.create({
+          model: "gpt-4o",
+          max_tokens: 16000,
+          messages: r15Messages,
+          stream: true,
+        });
+
+        lastChunkContent = "";
+        let contFR: string | null = null;
+        for await (const chunk of streamContinue) {
+          const content = chunk.choices[0]?.delta?.content;
+          contFR = chunk.choices[0]?.finish_reason ?? contFR;
+          if (content) {
+            lastChunkContent += content;
+            fullResponse += content;
+            sendEvent({ type: "delta", content });
+          }
+        }
+        finishReason = contFR ?? finishReason;
+        r15Iteration++;
+      }
+    }
+
     // ── Round 2: Execute tool calls if any ──────────────────────────────────
 
-    const toolCallsList = Object.values(toolCallsAccum);
+    const toolCallsList = toolCallsList0; // already computed above
 
     if (finishReason === "tool_calls" && toolCallsList.length > 0) {
       const assetCalls = toolCallsList.filter(tc => tc.name === "generate_game_asset");
@@ -989,26 +1064,60 @@ router.post("/ai/chat", async (req, res) => {
       sendEvent({ type: "assets_done" });
       sendEvent({ type: "thinking", content: "Writing game code with generated assets..." });
 
-      // ── Round 3: AI writes the game code using the generated asset paths ──
+      // ── Round 3: AI writes game code — loop until all files are written ──────
+      // gpt-4o caps output at ~16K tokens which can cut a full game off mid-file.
+      // We continue sending "keep going" turns until finish_reason is "stop".
 
-      const stream2 = await openai.chat.completions.create({
-        model: "gpt-4o",
-        max_tokens: 16000,
-        messages: chatMessages,
-        stream: true,
-      });
-
+      const round3Messages = [...chatMessages];
+      let round3Iteration = 0;
+      const MAX_CONTINUATIONS = 5;
       let isFirst2 = true;
-      for await (const chunk of stream2) {
-        const content = chunk.choices[0]?.delta?.content;
-        if (content) {
-          if (isFirst2) {
-            sendEvent({ type: "thinking_done" });
-            isFirst2 = false;
+
+      while (round3Iteration < MAX_CONTINUATIONS) {
+        const stream2 = await openai.chat.completions.create({
+          model: "gpt-4o",
+          max_tokens: 16000,
+          messages: round3Messages,
+          stream: true,
+        });
+
+        let chunkContent = "";
+        let r3FinishReason: string | null = null;
+
+        for await (const chunk of stream2) {
+          const content = chunk.choices[0]?.delta?.content;
+          r3FinishReason = chunk.choices[0]?.finish_reason ?? r3FinishReason;
+          if (content) {
+            if (isFirst2) {
+              sendEvent({ type: "thinking_done" });
+              isFirst2 = false;
+            }
+            chunkContent += content;
+            fullResponse += content;
+            sendEvent({ type: "delta", content });
           }
-          fullResponse += content;
-          sendEvent({ type: "delta", content });
         }
+
+        round3Iteration++;
+
+        if (r3FinishReason !== "length") {
+          // "stop" or null — AI finished normally
+          break;
+        }
+
+        // Hit the output token limit mid-response. Append partial output and ask
+        // the AI to continue writing the remaining files without repeating anything.
+        round3Messages.push({ role: "assistant", content: chunkContent });
+        round3Messages.push({
+          role: "user",
+          content: [
+            "CONTINUE — do not stop until every file in the planned structure is written.",
+            "Do not repeat any <file> block already output above.",
+            "Output only the remaining <file path=\"...\"> blocks, then a short closing line.",
+          ].join(" "),
+        });
+
+        sendEvent({ type: "thinking", content: "Continuing to write remaining files..." });
       }
     }
 
