@@ -56,6 +56,23 @@ const CONSOLE_INJECT_SCRIPT = `<script>
   window.addEventListener('unhandledrejection', function(e) {
     send('error', ['Unhandled Promise: ' + (e.reason?.message || e.reason)]);
   });
+
+  // Phaser 3 active scene detector — polls every 500ms and reports scene changes
+  var _lastScene = null;
+  setInterval(function() {
+    try {
+      var game = window.game;
+      if (!game && window.Phaser && window.Phaser.GAMES) game = window.Phaser.GAMES[0];
+      if (!game || !game.scene) return;
+      var scenes = game.scene.getScenes(true);
+      if (!scenes || !scenes.length) return;
+      var key = scenes.map(function(s) { return s.scene && s.scene.key; }).filter(Boolean).join(' + ');
+      if (key && key !== _lastScene) {
+        _lastScene = key;
+        window.parent.postMessage({ type: 'phaser-scene', scene: key }, '*');
+      }
+    } catch(e) {}
+  }, 500);
 })();
 </script>`;
 

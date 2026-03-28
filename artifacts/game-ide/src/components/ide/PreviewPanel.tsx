@@ -81,6 +81,21 @@ export function PreviewPanel({ projectId }: { projectId: string }) {
   const { data } = useGetPreviewEntry(projectId);
   const { previewRefreshKey, refreshPreview } = useIde();
   const logsEndRef = useRef<HTMLDivElement>(null);
+  const [activeScene, setActiveScene] = useState<string | null>(null);
+
+  // Listen for Phaser scene change messages from the preview iframe
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      if (e.data?.type === "phaser-scene") {
+        setActiveScene(e.data.scene ?? null);
+      }
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, []);
+
+  // Clear scene name when project changes or preview refreshes
+  useEffect(() => { setActiveScene(null); }, [projectId, previewRefreshKey]);
 
   // Extract vite info from preview-entry response (extra fields beyond the typed schema)
   const anyData = data as (typeof data & {
@@ -262,13 +277,22 @@ export function PreviewPanel({ projectId }: { projectId: string }) {
             )}
           </div>
         ) : data?.url ? (
-          <iframe
-            key={`${previewRefreshKey}-${viteStatus}`}
-            src={data.url}
-            className="absolute inset-0 w-full h-full border-0"
-            title="Game Preview"
-            sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"
-          />
+          <>
+            <iframe
+              key={`${previewRefreshKey}-${viteStatus}`}
+              src={data.url}
+              className={`absolute top-0 left-0 right-0 ${activeScene ? "bottom-6" : "bottom-0"} border-0 w-full`}
+              title="Game Preview"
+              sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"
+            />
+            {activeScene && (
+              <div className="absolute bottom-0 left-0 right-0 h-6 bg-card/95 backdrop-blur-sm border-t border-border flex items-center px-3 gap-2 text-xs z-10 select-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
+                <span className="text-muted-foreground">Scene</span>
+                <span className="font-mono text-blue-400 font-medium truncate">{activeScene}</span>
+              </div>
+            )}
+          </>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
             No preview available
