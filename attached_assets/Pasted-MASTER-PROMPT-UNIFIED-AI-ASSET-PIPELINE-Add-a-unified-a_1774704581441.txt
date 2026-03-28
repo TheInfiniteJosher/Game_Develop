@@ -1,0 +1,181 @@
+MASTER PROMPT — UNIFIED AI + ASSET PIPELINE
+Add a unified asset intelligence pipeline to GameForge so the primary Studio AI can automatically plan, generate, format, and integrate art assets as part of normal conversation-driven game creation.
+The goal is to eliminate the separation between “coding AI” and “asset generator AI” so the system behaves like a single creative partner capable of building complete playable games from one prompt.
+PRIMARY OBJECTIVE
+The main Studio AI must be able to:
+understand the visual style implied in user prompts
+determine what assets are required for gameplay
+generate those assets using the asset generation pipeline
+format those assets correctly for Phaser and HTML5 Canvas
+automatically integrate the generated assets into the game code
+maintain consistent art direction across all generated assets
+reuse previously generated assets when appropriate
+ensure generated assets match required technical constraints (size, tiling, sprite sheets)
+The user should not need to manually switch tabs or separately prompt the Asset Studio.
+Example workflow:
+User prompt in main chat:
+“Create a coffee shop themed arcade shooter where the player throws espresso shots at enemies. Pixel art style. Cozy warm lighting. Top-down perspective.”
+The Studio AI should:
+plan game architecture
+determine required asset list
+generate assets automatically
+integrate assets into code
+produce playable result in preview
+without requiring manual asset generation steps.
+UNIFIED AI ARCHITECTURE
+The asset generation system must be exposed as a callable tool available to the primary Studio AI.
+Create a shared service layer:
+/server/services/assetPipeline
+The main AI must be able to call structured functions such as:
+generateSprite()
+generateTileset()
+generateBackground()
+generateUIElement()
+generateVFX()
+The Asset Studio panel remains available for manual generation, but is no longer required for core workflows.
+ASSET SPECIFICATION SYSTEM
+Create a standardized asset specification schema that the Studio AI uses when generating assets.
+Each asset request must include:
+assetName
+assetType
+visualStyle
+resolution
+pixelDensity
+frameCount
+animationType
+tileability
+backgroundType
+cameraPerspective
+Example:
+{
+assetName: "player_barista",
+assetType: "sprite",
+visualStyle: "pixel art",
+resolution: 256,
+frameCount: 8,
+animationType: "run cycle",
+perspective: "top-down"
+}
+STYLE CONSISTENCY ENGINE
+When a project is created, define a persistent Art Direction object stored in project metadata:
+{
+primaryStyle
+colorPalette
+lightingStyle
+perspective
+pixelScale
+thematicKeywords
+}
+All asset prompts must inherit these values automatically unless overridden by the user.
+This ensures visual consistency across generated assets.
+ASSET TECHNICAL STANDARDS
+Define default technical standards for each asset category so assets are immediately usable in Phaser.
+Character sprites:
+power-of-two resolution
+default frame size 64x64 or 128x128
+transparent background
+consistent pivot point centered
+uniform pixel scale
+Sprite sheets:
+grid aligned
+even frame spacing
+consistent frame dimensions
+JSON metadata describing:
+frameWidth
+frameHeight
+frameCount
+Tilesets:
+tile sizes 16x16, 32x32, or 64x64
+seamless edges
+grid aligned output
+square layout
+Backgrounds:
+16:9 or parallax compatible wide format
+minimum width 1920px
+layer-friendly composition
+UI elements:
+transparent PNG
+consistent padding
+aligned anchor points
+VFX:
+transparent background
+consistent frame timing
+loop-ready sequences
+AUTOMATIC SPRITE SHEET ASSEMBLY
+If multiple frames are generated:
+assemble frames into sprite sheet grid automatically.
+generate metadata file:
+assetName.json
+containing:
+frameWidth
+frameHeight
+frameCount
+formatted for Phaser loader compatibility:
+this.load.spritesheet()
+PROJECT INTEGRATION
+After asset generation:
+save assets to appropriate project folder
+/assets/sprites/
+/assets/backgrounds/
+/assets/tilesets/
+/assets/ui/
+/assets/vfx/
+update relevant game files automatically
+example:
+import asset paths
+update preload() function
+insert animation definitions
+trigger preview refresh automatically
+AI TOOL INTEROPERABILITY
+The main Studio AI must be able to:
+reference existing assets
+modify asset specifications
+request alternate variations
+regenerate assets with updated parameters
+Example conversational flow:
+User:
+“make the enemies look more robotic”
+Studio AI:
+updates asset prompt
+regenerates enemy sprites
+updates code references
+reloads preview
+ASSET REUSE LOGIC
+Before generating new assets:
+check project asset library for similar assets.
+avoid duplicate generation when possible.
+maintain asset manifest:
+/project.json
+listing all assets and metadata.
+UI CHANGES
+Keep Asset Studio panel for manual control but connect it to the same underlying pipeline.
+Add ability for Studio AI chat messages to show:
+asset generation progress inline.
+Example:
+Generating assets:
+player sprite
+enemy sprite
+coffee projectile
+tileset
+background
+Show thumbnails inline in chat when generation completes.
+PROMPT INTERPRETATION LAYER
+Create logic allowing Studio AI to extract asset needs from natural language prompts.
+Example:
+“coffee shop arcade shooter”
+maps to:
+player character
+enemy characters
+projectile sprite
+background
+tileset
+ui elements
+DELIVERABLE
+The Studio AI behaves as a unified creative system capable of:
+planning game structure
+generating art assets
+integrating assets into code
+producing playable output
+maintaining visual consistency
+from a single conversational prompt.
+The user should feel like they are collaborating with one AI creative director rather than multiple disconnected tools.

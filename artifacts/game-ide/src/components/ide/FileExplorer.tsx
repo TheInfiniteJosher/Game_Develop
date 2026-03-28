@@ -2,13 +2,14 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import {
   ChevronRight, ChevronDown, FileIcon, Folder, FolderOpen,
   FileJson, FileCode2, FileImage, Plus, Trash2, Edit2,
-  FilePlus, FolderPlus, Search, X,
+  FilePlus, FolderPlus, Search, X, ImageIcon,
 } from "lucide-react";
 import { useListFiles, useDeleteFile, useRenameFile, useCreateFolder, useWriteFile } from "@/hooks/use-api";
 import { useIde } from "@/hooks/use-ide";
 import { type ListFilesResponseItem as FileNode } from "@workspace/api-client-react";
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuSeparator, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Button } from "@/components/ui/button";
+import { AssetBrowser } from "./AssetBrowser";
 
 // ---------------------------------------------------------------------------
 // File icon helper
@@ -208,11 +209,12 @@ function SearchResults({
 // ---------------------------------------------------------------------------
 // Main FileExplorer component
 // ---------------------------------------------------------------------------
-export function FileExplorer({ projectId }: { projectId: string }) {
+export function FileExplorer({ projectId, onGenerateAsset }: { projectId: string; onGenerateAsset?: () => void }) {
   const { data: files, isLoading } = useListFiles(projectId);
   const createFolder = useCreateFolder();
   const writeFileMutation = useWriteFile();
 
+  const [sidebarView, setSidebarView] = useState<"files" | "assets">("files");
   const [searchActive, setSearchActive] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -278,57 +280,88 @@ export function FileExplorer({ projectId }: { projectId: string }) {
 
   return (
     <div className="h-full flex flex-col bg-card border-r border-border">
-      {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-border shrink-0">
-        {searchActive ? (
-          <div className="flex items-center gap-1.5 w-full">
-            <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-            <input
-              ref={searchInputRef}
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search files…"
-              className="flex-1 bg-transparent text-xs outline-none text-foreground placeholder:text-muted-foreground/60 min-w-0"
-            />
-            <button
-              onClick={closeSearch}
-              className="text-muted-foreground hover:text-foreground shrink-0 p-0.5 rounded"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ) : (
-          <>
-            <span className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">Explorer</span>
-            <div className="flex gap-1">
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={openSearch} title="Search files">
-                <Search className="h-3.5 w-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleNewFile("")} title="New file">
-                <FilePlus className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={handleNewFolder} title="New folder">
-                <FolderPlus className="h-4 w-4" />
-              </Button>
-            </div>
-          </>
-        )}
+      {/* View toggle — Files / Assets */}
+      <div className="flex items-center gap-px p-2 border-b border-border shrink-0 bg-sidebar">
+        <button
+          onClick={() => setSidebarView("files")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+            sidebarView === "files"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Folder className="w-3.5 h-3.5" />
+          Files
+        </button>
+        <button
+          onClick={() => setSidebarView("assets")}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+            sidebarView === "assets"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <ImageIcon className="w-3.5 h-3.5" />
+          Assets
+        </button>
       </div>
 
-      {/* Content: search results or file tree */}
-      {searchActive ? (
-        <SearchResults
-          query={searchQuery}
-          results={searchResults}
-          loading={searching}
+      {/* Assets view */}
+      {sidebarView === "assets" && (
+        <AssetBrowser
           projectId={projectId}
+          onGenerateClick={() => onGenerateAsset?.()}
         />
-      ) : (
-        <div className="flex-1 overflow-y-auto py-2">
-          {files?.map(node => (
-            <NodeItem key={node.path} node={node} level={0} projectId={projectId} onNewFile={handleNewFile} />
-          ))}
-        </div>
+      )}
+
+      {/* Files view */}
+      {sidebarView === "files" && (
+        <>
+          {/* Files header */}
+          <div className="flex items-center justify-between px-2 py-1.5 border-b border-border shrink-0">
+            {searchActive ? (
+              <div className="flex items-center gap-1.5 w-full">
+                <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <input
+                  ref={searchInputRef}
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Search files…"
+                  className="flex-1 bg-transparent text-xs outline-none text-foreground placeholder:text-muted-foreground/60 min-w-0"
+                />
+                <button onClick={closeSearch} className="text-muted-foreground hover:text-foreground shrink-0 p-0.5 rounded">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <span className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">Explorer</span>
+                <div className="flex gap-1">
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={openSearch} title="Search files">
+                    <Search className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={() => handleNewFile("")} title="New file">
+                    <FilePlus className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-muted-foreground hover:text-foreground" onClick={handleNewFolder} title="New folder">
+                    <FolderPlus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* File tree or search results */}
+          {searchActive ? (
+            <SearchResults query={searchQuery} results={searchResults} loading={searching} projectId={projectId} />
+          ) : (
+            <div className="flex-1 overflow-y-auto py-2">
+              {files?.map(node => (
+                <NodeItem key={node.path} node={node} level={0} projectId={projectId} onNewFile={handleNewFile} />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

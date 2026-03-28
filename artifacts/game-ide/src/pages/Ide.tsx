@@ -39,6 +39,7 @@ function IdeLayout({ projectId }: { projectId: string }) {
   const { mutate: publish, isPending: publishing } = usePublishProject();
   const { mutate: unpublish, isPending: unpublishing } = useUnpublishProject();
   const [copied, setCopied] = useState(false);
+  const [activeBottomTab, setActiveBottomTab] = useState("chat");
 
   const isPublished = !!(project as any)?.publishedSlug;
   const publishedSlug = (project as any)?.publishedSlug as string | undefined;
@@ -208,7 +209,7 @@ function IdeLayout({ projectId }: { projectId: string }) {
           
           {/* Left Sidebar - Explorer */}
           <ResizablePanel defaultSize={18} minSize={12} maxSize={30} className="z-10">
-            <FileExplorer projectId={projectId} />
+            <FileExplorer projectId={projectId} onGenerateAsset={() => setActiveBottomTab("assets")} />
           </ResizablePanel>
           
           <ResizableHandle className="w-1 bg-border hover:bg-primary/50 transition-colors" />
@@ -261,7 +262,7 @@ function IdeLayout({ projectId }: { projectId: string }) {
 
                   {/* Bottom Panel (AI Chat / Changes / Console / Assets) */}
                   <ResizablePanel defaultSize={30} minSize={20}>
-                    <Tabs defaultValue="chat" className="h-full flex flex-col">
+                    <Tabs value={activeBottomTab} onValueChange={setActiveBottomTab} className="h-full flex flex-col">
                       <div className="px-2 border-b border-border bg-card shrink-0">
                         <TabsList className="bg-transparent border-0 h-10 p-0 gap-3">
                           <TabsTrigger value="chat" className="data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full shadow-none px-3 text-xs tracking-wide uppercase font-semibold">
