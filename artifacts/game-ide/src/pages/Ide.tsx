@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@workspace/replit-auth-web";
+import { GameForgeLogo } from "@/components/GameForgeLogo";
 
 interface ConsoleMessage {
   level: "log" | "error" | "warn";
@@ -87,9 +88,13 @@ function IdeLayout({ projectId }: { projectId: string }) {
               <ChevronLeft className="h-5 w-5"/>
             </Button>
           </Link>
+          <Link href="/" className="flex items-center">
+            <GameForgeLogo size={28} />
+          </Link>
+          <div className="w-px h-5 bg-border" />
           <div className="flex flex-col">
             <span className="font-semibold text-sm leading-tight">{project?.name || "Loading..."}</span>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-widest">AI Game Studio</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-widest">project</span>
           </div>
         </div>
 

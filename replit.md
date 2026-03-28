@@ -122,9 +122,10 @@ Browser auth helper library. Exports `useAuth()` React hook that:
 - **Auth routes** (mounted on authRouter): `GET /api/auth/user`, `GET /api/login`, `GET /api/callback`, `GET /api/logout`, `POST /api/mobile-auth/token-exchange`, `POST /api/mobile-auth/logout`
 - **Project isolation**: Projects are scoped to `userId`; list/create require auth; anonymous users see an empty list and get 401 on create
 
-## AI Game Dev IDE Features
+## GameForge Features
 
-- **Dashboard**: Requires sign-in (Replit OIDC). Shows auth gate with "Sign in" button when logged out. Authenticated users see their own projects with avatar + sign-out menu.
+- **Branding**: "GameForge" — orange/amber forge-fire color palette; custom SVG logo in `src/components/GameForgeLogo.tsx` (game controller + flame + sparks)
+- **Dashboard**: Requires sign-in (Replit OIDC). Signed-out users see a hero landing page with logo, tagline, feature cards, and "Get started free" CTA. Authenticated users see a personalized project grid with avatar + sign-out menu.
 - Create/upload ZIP/manage projects; rename, duplicate, delete from dropdown menu
 - **VS Code-style File Explorer**: Context menu (rename, delete, duplicate, new file, new folder), drag-and-drop upload
 - **Monaco Code Editor**: Tabbed multi-file editing with syntax highlighting
