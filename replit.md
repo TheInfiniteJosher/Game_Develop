@@ -131,7 +131,10 @@ Browser auth helper library. Exports `useAuth()` React hook that:
 - **Monaco Code Editor**: Tabbed multi-file editing with syntax highlighting
 - **Live Game Preview**: iframe serves from `/preview/:projectId/` with console.log injection (postMessage to parent)
 - **Console Tab**: Captures logs/errors/warnings from the preview iframe in real time
-- **AI Chat Panel**: SSE streaming chat (GPT via Replit OpenAI AI Integration), collapsible thoughts, parses file tags to apply code changes
+- **AI Chat Panel**: SSE streaming chat (GPT-4o via Replit OpenAI AI Integration). Supports **AI tool calling loop**: when user asks to "build a coffee shop simulator" etc, AI calls `generate_game_asset` tool (up to 6 assets), backend generates images via DALL-E, returns file paths; AI then writes Phaser code using those exact paths. Live asset generation progress shown inline with thumbnails. Quick-prompt chips in input area.
+- **Asset generation service**: `artifacts/api-server/src/services/assetGeneration.ts` — shared image generation logic using `gpt-image-1`, saves PNG + `.meta.json` to project's `assets/` folder.
+- **Asset Browser sidebar**: Files/Assets toggle in left sidebar (FileExplorer.tsx + AssetBrowser.tsx) — thumbnail grid with hover rename/delete/copy, inline rename, code snippet popover, click to expand detail.
+- **AssetStudio bottom panel**: Generation-only form (prompt, presets, style, type, aspect, frames). After generation shows result + code snippet + hint to view in sidebar.
 - **Changes Panel**: History of AI-applied file changes with revert capability
 - **File Storage**: `/tmp/game-ide-projects/{projectId}/files/` on disk
 - **Demo Project**: "Demo: Phaser Platformer" created at startup for immediate exploration

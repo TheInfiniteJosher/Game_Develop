@@ -1,16 +1,34 @@
 import { useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
+export interface GeneratingAsset {
+  index: number;
+  name: string;
+  assetType: string;
+  style: string;
+  prompt: string;
+  status: 'generating' | 'done' | 'error';
+  path?: string;
+  previewUrl?: string;
+  filename?: string;
+  frameCount?: number;
+  frameWidth?: number;
+  frameHeight?: number;
+  error?: string;
+}
+
 export function useAiChatStream(projectId: string) {
   const [streamingMessage, setStreamingMessage] = useState('');
   const [thinking, setThinking] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [generatingAssets, setGeneratingAssets] = useState<GeneratingAsset[]>([]);
   const queryClient = useQueryClient();
 
   const sendMessage = useCallback(async (message: string, contextFiles?: string[]) => {
     setIsStreaming(true);
     setStreamingMessage('');
     setThinking('');
+    setGeneratingAssets([]);
 
     try {
       const res = await fetch(`/api/projects/${projectId}/ai/chat`, {
@@ -26,35 +44,94 @@ export function useAiChatStream(projectId: string) {
 
       if (!reader) return;
 
+      let buffer = '';
       let done = false;
+
       while (!done) {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
         if (value) {
-          const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
-          
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+
           for (const line of lines) {
             if (line.trim() === '') continue;
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                
-                if (data.type === 'thinking') {
-                  setThinking(prev => prev + data.content);
-                } else if (data.type === 'delta') {
-                  setStreamingMessage(prev => prev + data.content);
-                } else if (data.type === 'change') {
-                  // A file was changed, invalidate files list so tree updates
-                  queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/files`] });
-                } else if (data.type === 'done') {
-                  // Generation complete
-                  queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/ai/history`] });
-                  queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/changes`] });
-                }
-              } catch (e) {
-                // Ignore parse errors for incomplete chunks
+            if (!line.startsWith('data: ')) continue;
+
+            try {
+              const data = JSON.parse(line.slice(6));
+
+              if (data.type === 'thinking') {
+                setThinking(prev => prev + (data.content || ''));
+              } else if (data.type === 'thinking_done') {
+                setThinking('');
+              } else if (data.type === 'delta') {
+                setStreamingMessage(prev => prev + data.content);
+
+              } else if (data.type === 'assets_start') {
+                // AI is starting to generate assets — reset asset list
+                setGeneratingAssets([]);
+
+              } else if (data.type === 'asset_generating') {
+                // A specific asset is being generated now
+                setGeneratingAssets(prev => [
+                  ...prev.filter(a => a.index !== data.index),
+                  {
+                    index: data.index,
+                    name: data.name,
+                    assetType: data.assetType,
+                    style: data.style,
+                    prompt: data.prompt,
+                    status: 'generating',
+                  },
+                ]);
+
+              } else if (data.type === 'asset_done') {
+                setGeneratingAssets(prev =>
+                  prev.map(a =>
+                    a.index === data.index
+                      ? {
+                          ...a,
+                          status: 'done',
+                          path: data.path,
+                          previewUrl: data.previewUrl,
+                          filename: data.filename,
+                          frameCount: data.frameCount,
+                          frameWidth: data.frameWidth,
+                          frameHeight: data.frameHeight,
+                        }
+                      : a
+                  )
+                );
+                // Refresh asset browser
+                queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/assets`] });
+
+              } else if (data.type === 'asset_error') {
+                setGeneratingAssets(prev =>
+                  prev.map(a =>
+                    a.index === data.index
+                      ? { ...a, status: 'error', error: data.error }
+                      : a
+                  )
+                );
+
+              } else if (data.type === 'assets_done') {
+                // All assets generated, AI is about to write code
+                // keep the assets visible in UI
+
+              } else if (data.type === 'change') {
+                queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/files`] });
+
+              } else if (data.type === 'assets_saved') {
+                queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/assets`] });
+
+              } else if (data.type === 'done') {
+                queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/ai/history`] });
+                queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/changes`] });
               }
+            } catch {
+              // Ignore parse errors for incomplete chunks
             }
           }
         }
@@ -63,10 +140,9 @@ export function useAiChatStream(projectId: string) {
       console.error('Chat error', error);
     } finally {
       setIsStreaming(false);
-      // Ensure we refresh history one last time
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/ai/history`] });
     }
   }, [projectId, queryClient]);
 
-  return { sendMessage, streamingMessage, thinking, isStreaming };
+  return { sendMessage, streamingMessage, thinking, isStreaming, generatingAssets };
 }
