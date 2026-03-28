@@ -600,17 +600,11 @@ router.post("/ai/chat", async (req, res) => {
         })),
       });
 
-      // Execute all tool calls, potentially in parallel (but cap at 3 concurrent)
+      // Execute all tool calls fully in parallel — no cap
       const toolResults: OpenAI.Chat.ChatCompletionToolMessageParam[] = [];
-
-      // Process in batches of 3 to avoid rate limits
-      const batchSize = 3;
-      const allCalls = toolCallsList.slice(0, 10); // max 10 combined calls
-      for (let i = 0; i < allCalls.length; i += batchSize) {
-        const batch = allCalls.slice(i, i + batchSize);
-        const batchResults = await Promise.all(
-          batch.map(async (tc, batchIdx) => {
-            const globalIdx = i + batchIdx;
+      const allCalls = toolCallsList;
+      const batchResults = await Promise.all(
+        allCalls.map(async (tc, globalIdx) => {
             let args: Record<string, unknown> = {};
             try {
               args = JSON.parse(tc.args);
@@ -758,8 +752,7 @@ router.post("/ai/chat", async (req, res) => {
             }
           })
         );
-        toolResults.push(...batchResults);
-      }
+      toolResults.push(...batchResults);
 
       // Add tool results to messages
       for (const result of toolResults) {
