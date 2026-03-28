@@ -20,6 +20,7 @@ import {
   detectEntryFile,
   getProjectRoot,
   countFiles,
+  searchProjectFiles,
 } from "../services/filesystem.js";
 import { nanoid } from "../lib/nanoid.js";
 import { isViteProject, buildViteProject, getViteStatus } from "../services/vite-manager.js";
@@ -49,6 +50,19 @@ router.get("/files", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to list files");
     res.status(500).json({ error: "Failed to list files" });
+  }
+});
+
+// Search files by name and content
+router.get("/files/search", async (req, res) => {
+  try {
+    const q = (req.query.q as string)?.trim();
+    if (!q || q.length < 2) return res.json([]);
+    const results = await searchProjectFiles(req.params.id, q);
+    res.json(results);
+  } catch (err) {
+    req.log.error({ err }, "Failed to search files");
+    res.status(500).json({ error: "Failed to search files" });
   }
 });
 

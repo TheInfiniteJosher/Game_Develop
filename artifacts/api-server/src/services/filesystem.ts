@@ -199,6 +199,107 @@ export async function detectEntryFile(projectId: string): Promise<string | null>
   return null;
 }
 
+// Extensions considered binary (skip content search)
+const BINARY_EXTENSIONS = new Set([
+  ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".webp", ".avif",
+  ".mp3", ".mp4", ".wav", ".ogg", ".flac", ".aac",
+  ".ttf", ".otf", ".woff", ".woff2",
+  ".zip", ".gz", ".tar", ".br",
+  ".pdf", ".bin", ".exe", ".wasm",
+]);
+
+const SKIP_DIRS = new Set(["node_modules", ".git", "dist", ".cache", ".vite"]);
+
+export interface SearchMatch {
+  line: number;
+  text: string;
+}
+
+export interface SearchResult {
+  path: string;
+  name: string;
+  matches: SearchMatch[];
+}
+
+export async function searchProjectFiles(
+  projectId: string,
+  query: string,
+  maxResults = 50,
+): Promise<SearchResult[]> {
+  const root = getProjectRoot(projectId);
+  if (!existsSync(root)) return [];
+
+  const q = query.toLowerCase();
+  const results: SearchResult[] = [];
+
+  async function walk(dir: string, rel: string) {
+    if (results.length >= maxResults) return;
+    let entries: import("fs").Dirent[];
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (results.length >= maxResults) break;
+      if (SKIP_DIRS.has(entry.name)) continue;
+
+      const entryRel = rel ? `${rel}/${entry.name}` : entry.name;
+      const entryAbs = path.join(dir, entry.name);
+
+      if (entry.isDirectory()) {
+        await walk(entryAbs, entryRel);
+      } else if (entry.isFile()) {
+        const ext = path.extname(entry.name).toLowerCase();
+        const nameMatches = entry.name.toLowerCase().includes(q);
+
+        if (BINARY_EXTENSIONS.has(ext)) {
+          // Only match by filename for binary/asset files
+          if (nameMatches) {
+            results.push({ path: entryRel, name: entry.name, matches: [] });
+          }
+          continue;
+        }
+
+        // Skip large files (> 512 KB)
+        try {
+          const stat = await fs.stat(entryAbs);
+          if (stat.size > 512 * 1024) {
+            if (nameMatches) results.push({ path: entryRel, name: entry.name, matches: [] });
+            continue;
+          }
+        } catch {
+          continue;
+        }
+
+        let content: string;
+        try {
+          content = await fs.readFile(entryAbs, "utf-8");
+        } catch {
+          if (nameMatches) results.push({ path: entryRel, name: entry.name, matches: [] });
+          continue;
+        }
+
+        const lines = content.split("\n");
+        const matches: SearchMatch[] = [];
+        for (let i = 0; i < lines.length && matches.length < 3; i++) {
+          if (lines[i].toLowerCase().includes(q)) {
+            matches.push({ line: i + 1, text: lines[i].trim().slice(0, 160) });
+          }
+        }
+
+        if (nameMatches || matches.length > 0) {
+          results.push({ path: entryRel, name: entry.name, matches });
+        }
+      }
+    }
+  }
+
+  await walk(root, "");
+  return results;
+}
+
 export async function copyProjectFiles(
   sourceId: string,
   destId: string
