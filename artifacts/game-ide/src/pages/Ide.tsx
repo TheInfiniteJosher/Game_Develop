@@ -9,7 +9,8 @@ import { PreviewPanel } from "@/components/ide/PreviewPanel";
 import { AiChatPanel } from "@/components/ide/AiChatPanel";
 import { ChangesPanel } from "@/components/ide/ChangesPanel";
 import { AssetStudio } from "@/components/ide/AssetStudio";
-import { ChevronLeft, FileCode2, X, Terminal, Palette, Download, Globe, GlobeLock, Copy, Check, ChevronDown, LogOut, User } from "lucide-react";
+import { AudioStudio } from "@/components/ide/AudioStudio";
+import { ChevronLeft, FileCode2, X, Terminal, Palette, Download, Globe, GlobeLock, Copy, Check, ChevronDown, LogOut, User, Music2 } from "lucide-react";
 import { useGetProject, usePublishProject, useUnpublishProject } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
 import {
@@ -271,6 +272,9 @@ function IdeLayout({ projectId }: { projectId: string }) {
                           <TabsTrigger value="assets" className="data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full shadow-none px-3 text-xs tracking-wide uppercase font-semibold flex items-center gap-1.5">
                             <Palette className="w-3 h-3" />Assets
                           </TabsTrigger>
+                          <TabsTrigger value="audio" className="data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full shadow-none px-3 text-xs tracking-wide uppercase font-semibold flex items-center gap-1.5">
+                            <Music2 className="w-3 h-3" />Audio
+                          </TabsTrigger>
                           <TabsTrigger value="changes" className="data-[state=active]:bg-background data-[state=active]:text-primary data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-full shadow-none px-3 text-xs tracking-wide uppercase font-semibold">
                             Changes
                           </TabsTrigger>
@@ -285,6 +289,9 @@ function IdeLayout({ projectId }: { projectId: string }) {
                         </TabsContent>
                         <TabsContent value="assets" className="h-full m-0 overflow-hidden">
                           <AssetStudio projectId={projectId} />
+                        </TabsContent>
+                        <TabsContent value="audio" className="h-full m-0 overflow-hidden">
+                          <AudioStudio projectId={projectId} />
                         </TabsContent>
                         <TabsContent value="changes" className="h-full m-0">
                           <ChangesPanel projectId={projectId} />

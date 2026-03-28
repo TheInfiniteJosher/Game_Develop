@@ -12,6 +12,7 @@ import {
   getProjectRoot,
 } from "../services/filesystem.js";
 import { generateAssetForProject } from "../services/assetGeneration.js";
+import { generateAudioForProject } from "../services/audioPipeline.js";
 import { nanoid } from "../lib/nanoid.js";
 import { existsSync } from "fs";
 
@@ -65,6 +66,56 @@ const GAME_ASSET_TOOL: OpenAI.Chat.ChatCompletionTool = {
         },
       },
       required: ["name", "prompt", "assetType", "style"],
+    },
+  },
+};
+
+const GAME_AUDIO_TOOL: OpenAI.Chat.ChatCompletionTool = {
+  type: "function",
+  function: {
+    name: "generate_game_audio",
+    description:
+      "Generate a game audio file (sound effect, music, or ambient track) using AI audio generation. " +
+      "Use this alongside generate_game_asset to produce a complete playable game with sound. " +
+      "Call for each distinct audio asset: background music, jump SFX, coin pickup, UI clicks, ambient loops, etc. " +
+      "Returns the file path to use in Phaser this.load.audio() calls. " +
+      "IMPORTANT: Only call this if ELEVENLABS_API_KEY is configured — check if audio generation is available first.",
+    parameters: {
+      type: "object" as const,
+      properties: {
+        audioName: {
+          type: "string",
+          description: "Short snake_case identifier and Phaser audio key (e.g. 'bg_music', 'jump_sfx', 'coin_pickup', 'ui_click')",
+        },
+        audioType: {
+          type: "string",
+          enum: ["sfx", "music", "ambient", "ui"],
+          description: "sfx=short action sound, music=loopable background track, ambient=environmental loop, ui=interface click/confirm",
+        },
+        description: {
+          type: "string",
+          description: "Clear description of what the sound should be. Be specific about the sound character.",
+        },
+        style: {
+          type: "string",
+          enum: ["8bit", "synth", "realistic", "fantasy", "scifi", "lofi", "cinematic"],
+          description: "Art style / sonic aesthetic. Match the game's visual style.",
+        },
+        mood: {
+          type: "string",
+          description: "Emotional tone: playful, tense, calm, epic, mysterious, cozy, energetic, spooky",
+        },
+        duration: {
+          type: "string",
+          enum: ["short", "medium", "long", "loop"],
+          description: "short=<2s (sfx/ui), medium=4s (sfx), long=8s (sfx/ambient), loop=20s (music/ambient)",
+        },
+        loop: {
+          type: "boolean",
+          description: "Whether Phaser should loop this audio. Always true for music and ambient.",
+        },
+      },
+      required: ["audioName", "audioType", "description", "style"],
     },
   },
 };
@@ -175,6 +226,46 @@ Rules:
 - Scale every loaded sprite to world units immediately after creation (setDisplaySize)
 - For sprite sheets: \`this.load.spritesheet('key', 'RETURNED_PATH', { frameWidth: 1024/frameCount, frameHeight: 1024 })\`
 - Do NOT generate assets for simple geometry — use Phaser.GameObjects.Graphics instead
+
+════════════════════════════════════════════════════════
+AUDIO GENERATION (generate_game_audio tool)
+════════════════════════════════════════════════════════
+When audio generation is available (ELEVENLABS_API_KEY configured), generate matching audio automatically when building a themed game.
+
+AUDIO STYLE PRINCIPLE: Match the game's sonic identity to its visual identity.
+- Pixel / retro → 8bit chiptune style
+- Fantasy / RPG → fantasy orchestral
+- Sci-fi / space → synth / scifi
+- Cozy / casual → lofi / soft
+- Action / combat → synth or cinematic
+- Horror → cinematic, tense mood
+
+MINIMUM AUDIO SET for a themed game (when audio is available):
+1. Background music — loopable, matches game mood (audioType: "music", duration: "loop", loop: true)
+2. At least 2 SFX matching the core player verbs (e.g. jump, shoot, collect, impact)
+3. UI click or menu sound (audioType: "ui")
+
+AUDIO INTEGRATION RULES:
+- Always use the EXACT returned phaserLoadSnippet in this.load.audio() calls inside preload()
+- Start background music in the game scene's create() method with loop: true
+- Trigger SFX on the corresponding game events (collision, pickup, player action)
+- Keep music volume at 0.4 and SFX at 0.7 by default
+- NEVER hard-code audio file paths — always use the returned path from generate_game_audio
+
+PHASER AUDIO PATTERN:
+\`\`\`js
+// preload()
+this.load.audio('bg_music', 'assets/audio/music/bg_music.mp3')
+this.load.audio('jump_sfx', 'assets/audio/sfx/jump_sfx.wav')
+
+// create()
+this.bgMusic = this.sound.play('bg_music', { loop: true, volume: 0.4 })
+
+// on event
+this.sound.play('jump_sfx', { volume: 0.7 })
+\`\`\`
+
+AUDIO REUSE: Before calling generate_game_audio for a generic sound (coin, jump, click), check if the project already has audio with that name. Reuse existing audio keys rather than generating duplicates.
 
 ════════════════════════════════════════════════════════
 CODE FORMAT
@@ -320,7 +411,9 @@ router.post("/ai/chat", async (req, res) => {
       model: "gpt-4o",
       max_tokens: 4096,
       messages: chatMessages,
-      tools: [GAME_ASSET_TOOL],
+      tools: process.env.ELEVENLABS_API_KEY
+        ? [GAME_ASSET_TOOL, GAME_AUDIO_TOOL]
+        : [GAME_ASSET_TOOL],
       tool_choice: "auto",
       stream: true,
     });
@@ -363,7 +456,13 @@ router.post("/ai/chat", async (req, res) => {
     const toolCallsList = Object.values(toolCallsAccum);
 
     if (finishReason === "tool_calls" && toolCallsList.length > 0) {
-      sendEvent({ type: "assets_start", count: toolCallsList.length });
+      const assetCalls = toolCallsList.filter(tc => tc.name === "generate_game_asset");
+      const audioCalls = toolCallsList.filter(tc => tc.name === "generate_game_audio");
+      sendEvent({
+        type: "assets_start",
+        count: assetCalls.length,
+        audioCount: audioCalls.length,
+      });
 
       // Add the assistant's tool_calls message to history
       chatMessages.push({
@@ -381,7 +480,7 @@ router.post("/ai/chat", async (req, res) => {
 
       // Process in batches of 3 to avoid rate limits
       const batchSize = 3;
-      const allCalls = toolCallsList.slice(0, 6); // max 6 assets per request
+      const allCalls = toolCallsList.slice(0, 10); // max 10 combined calls
       for (let i = 0; i < allCalls.length; i += batchSize) {
         const batch = allCalls.slice(i, i + batchSize);
         const batchResults = await Promise.all(
@@ -398,6 +497,72 @@ router.post("/ai/chat", async (req, res) => {
               };
             }
 
+            // ─── generate_game_audio ──────────────────────────────────────
+            if (tc.name === "generate_game_audio") {
+              const audioName = (args.audioName as string) || `audio_${globalIdx}`;
+              const audioType = (args.audioType as string) || "sfx";
+
+              sendEvent({
+                type: "audio_generating",
+                index: globalIdx,
+                name: audioName,
+                audioType,
+                description: args.description as string,
+              });
+
+              try {
+                const result = await generateAudioForProject(id, {
+                  audioName,
+                  audioType: audioType as "sfx" | "music" | "ambient" | "ui",
+                  description: (args.description as string) || audioName,
+                  style: args.style as string,
+                  mood: args.mood as string,
+                  duration: args.duration as "short" | "medium" | "long" | "loop",
+                  loop: args.loop as boolean,
+                });
+
+                sendEvent({
+                  type: "audio_done",
+                  index: globalIdx,
+                  name: audioName,
+                  path: result.path,
+                  previewUrl: result.previewUrl,
+                  audioType: result.audioType,
+                  loop: result.loop,
+                  phaserLoadSnippet: result.phaserLoadSnippet,
+                  phaserPlaySnippet: result.phaserPlaySnippet,
+                });
+
+                return {
+                  tool_call_id: tc.id,
+                  role: "tool" as const,
+                  content: JSON.stringify({
+                    success: true,
+                    audioName,
+                    path: result.path,
+                    audioType: result.audioType,
+                    loop: result.loop,
+                    phaserLoadSnippet: result.phaserLoadSnippet,
+                    phaserPlaySnippet: result.phaserPlaySnippet,
+                  }),
+                };
+              } catch (err) {
+                sendEvent({
+                  type: "audio_error",
+                  index: globalIdx,
+                  name: audioName,
+                  error: String(err),
+                });
+
+                return {
+                  tool_call_id: tc.id,
+                  role: "tool" as const,
+                  content: JSON.stringify({ error: `Failed to generate audio: ${err}` }),
+                };
+              }
+            }
+
+            // ─── generate_game_asset (default) ───────────────────────────
             const assetName = (args.name as string) || `asset_${globalIdx}`;
             const assetType = (args.assetType as string) || "sprite";
             const style = (args.style as string) || "pixel";

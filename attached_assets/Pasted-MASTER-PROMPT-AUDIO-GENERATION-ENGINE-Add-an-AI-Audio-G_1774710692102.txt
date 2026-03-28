@@ -1,0 +1,197 @@
+MASTER PROMPT — AUDIO GENERATION ENGINE
+Add an AI Audio Generation pipeline to GameForge that integrates seamlessly with the existing Studio AI and asset pipeline.
+The system should allow the primary Studio AI to automatically plan, generate, format, and integrate sound effects and music as part of normal conversational game creation workflows.
+The user should not need to manually switch tools to create audio.
+Audio generation must feel like a native capability of the main Studio AI.
+PRIMARY OBJECTIVE
+The Studio AI must be able to:
+determine what audio is needed for a game based on user prompts
+generate sound effects (SFX), music, and ambient audio
+ensure audio is formatted correctly for Phaser
+automatically integrate generated audio into the game code
+maintain stylistic consistency across all audio
+reuse existing project audio when appropriate
+allow manual audio generation from the Audio Studio panel
+Example:
+User prompt:
+“Create a cozy pixel-art coffee shop shooter with warm vibes”
+Studio AI should automatically generate:
+coffee machine sound effects
+cup impact sounds
+coin pickup sound
+UI click sounds
+cozy loopable background music
+and integrate them into the playable game preview.
+SERVICE LAYER
+Create:
+/server/services/audioPipeline
+Expose callable tools usable by Studio AI:
+generateSFX()
+generateMusic()
+generateAmbient()
+generateUISound()
+These tools should accept structured parameters.
+AUDIO SPECIFICATION SCHEMA
+Define a standard schema for audio generation requests:
+{
+audioName
+audioType
+style
+mood
+duration
+loop
+intensity
+description
+}
+Example:
+{
+audioName: "coin_pickup",
+audioType: "sfx",
+style: "retro",
+mood: "playful",
+duration: "short",
+loop: false,
+description: "8-bit coin pickup sound"
+}
+AUDIO DIRECTION OBJECT
+Extend project metadata with an Audio Direction object:
+{
+musicStyle
+soundStyle
+mood
+intensity
+era
+}
+Example:
+{
+musicStyle: "lofi",
+soundStyle: "soft retro",
+mood: "cozy",
+intensity: "low"
+}
+All generated audio should inherit these defaults unless overridden.
+This ensures stylistic consistency across the project.
+AUDIO TYPES
+Support 3 categories:
+SFX
+short sounds triggered by actions
+examples:
+jump
+coin pickup
+laser
+impact
+UI click
+explosion
+Music
+loopable background tracks
+examples:
+menu music
+level theme
+boss theme
+Ambient
+environmental sound layers
+examples:
+wind
+rain
+crowd noise
+coffee shop chatter
+TECHNICAL OUTPUT STANDARDS
+SFX:
+.wav format
+44.1kHz
+mono
+short duration
+normalized volume
+Music:
+.mp3 or .ogg
+loopable
+normalized volume
+1–3 minute length target
+Ambient:
+.ogg preferred
+loop-friendly
+low frequency intensity
+PROJECT STRUCTURE
+Save audio files to:
+/assets/audio/sfx/
+/assets/audio/music/
+/assets/audio/ambient/
+/assets/audio/ui/
+Maintain project audio manifest:
+/projectAudio.json
+listing:
+audioName
+filePath
+audioType
+style
+duration
+loop
+PHASER INTEGRATION
+Automatically update preload() with audio references.
+Example:
+this.load.audio("coin", "assets/audio/sfx/coin.wav")
+Add playback hooks where appropriate:
+coin pickup → play SFX
+button click → play UI sound
+scene start → start music loop
+Music should default to loop = true.
+UNIFIED AI WORKFLOW
+The main Studio AI should automatically infer audio needs from prompts.
+Example prompt:
+“space shooter with energetic arcade feel”
+should generate:
+laser sound
+explosion sound
+UI sounds
+arcade style background music
+without requiring separate audio prompts.
+Studio AI must be able to:
+regenerate sounds
+modify sound style
+swap audio assets
+adjust intensity
+through conversational instructions.
+Example:
+“make the laser sound more futuristic”
+AI regenerates audio and updates references.
+UI INTEGRATION
+Create Audio Studio panel similar to Asset Studio.
+Inputs:
+Describe your sound
+selectors:
+Audio Type:
+SFX
+Music
+Ambient
+UI
+Style:
+8-bit
+synth
+realistic
+fantasy
+scifi
+lofi
+cinematic
+Duration:
+short
+medium
+long
+loop
+Generate button
+Preview player
+Project audio list below.
+Both Audio Studio and Studio AI must use the same audio pipeline.
+ASSET REUSE LOGIC
+Before generating new audio:
+check project audio library for similar sounds.
+avoid duplicate generation.
+allow variation generation if requested.
+DELIVERABLE
+GameForge should be capable of:
+generating audio automatically
+maintaining consistent sound design
+integrating audio into Phaser projects
+providing preview playback
+allowing conversational iteration
+from a single unified prompt.
+The system should feel like one AI creative partner capable of producing complete playable experiences including sound.

@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useGetAiHistory, useClearAiHistory } from "@/hooks/use-api";
-import { useAiChatStream, type GeneratingAsset } from "@/hooks/use-ai-chat";
+import { useAiChatStream, type GeneratingAsset, type GeneratingAudio } from "@/hooks/use-ai-chat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Send, Trash2, ChevronRight, Bot, User, Loader2, FileCode2,
-  Sparkles, ImageIcon, CheckCircle2, AlertCircle, Wand2,
+  Sparkles, ImageIcon, CheckCircle2, AlertCircle, Wand2, Music2, Volume2,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import ReactMarkdown from "react-markdown";
@@ -112,12 +112,89 @@ function AssetGenerationBlock({ assets }: { assets: GeneratingAsset[] }) {
   );
 }
 
+// ─── Audio generation progress card ──────────────────────────────────────────
+
+const AUDIO_TYPE_ICONS: Record<string, typeof Music2> = {
+  music: Music2,
+  sfx: Volume2,
+  ambient: Volume2,
+  ui: Volume2,
+};
+
+function AudioCard({ audio }: { audio: GeneratingAudio }) {
+  const isDone = audio.status === "done";
+  const isError = audio.status === "error";
+  const Icon = AUDIO_TYPE_ICONS[audio.audioType] || Volume2;
+
+  return (
+    <div className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
+      isDone
+        ? "border-violet-500/30 bg-violet-500/5"
+        : isError
+          ? "border-red-500/30 bg-red-500/5"
+          : "border-violet-400/30 bg-violet-400/5"
+    }`}>
+      <div className={`w-10 h-10 rounded-md bg-violet-500/15 flex items-center justify-center shrink-0`}>
+        {isDone ? (
+          <CheckCircle2 className="w-4 h-4 text-violet-400" />
+        ) : isError ? (
+          <AlertCircle className="w-4 h-4 text-red-400" />
+        ) : (
+          <Icon className={`w-4 h-4 text-violet-400 animate-pulse`} />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-semibold truncate">{audio.name.replace(/_/g, " ")}</div>
+        <div className="text-[10px] text-muted-foreground truncate">
+          {isDone
+            ? `${audio.audioType} · ${audio.loop ? "looping" : "one-shot"}`
+            : isError
+              ? (audio.error || "Failed")
+              : `Generating ${audio.audioType}…`}
+        </div>
+      </div>
+      <div className="shrink-0">
+        {!isDone && !isError && (
+          <Loader2 className="w-3 h-3 text-violet-400 animate-spin" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AudioGenerationBlock({ audio }: { audio: GeneratingAudio[] }) {
+  const doneCount = audio.filter(a => a.status === "done").length;
+  const total = audio.length;
+  const allDone = doneCount === total;
+
+  return (
+    <div className="mt-2 rounded-xl border border-violet-500/30 bg-violet-500/5 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-violet-500/20">
+        <div className="w-5 h-5 rounded-md bg-violet-500/20 flex items-center justify-center">
+          {allDone ? (
+            <CheckCircle2 className="w-3 h-3 text-violet-400" />
+          ) : (
+            <Music2 className="w-3 h-3 text-violet-400 animate-pulse" />
+          )}
+        </div>
+        <span className="text-xs font-semibold">
+          {allDone ? "Audio Generated" : "Generating Audio"}
+        </span>
+        <span className="ml-auto text-[10px] text-muted-foreground">{doneCount}/{total}</span>
+      </div>
+      <div className="p-2 space-y-1.5">
+        {audio.map(a => <AudioCard key={a.index} audio={a} />)}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function AiChatPanel({ projectId }: { projectId: string }) {
   const { data: history } = useGetAiHistory(projectId);
   const clearHistory = useClearAiHistory();
-  const { sendMessage, streamingMessage, thinking, isStreaming, generatingAssets } = useAiChatStream(projectId);
+  const { sendMessage, streamingMessage, thinking, isStreaming, generatingAssets, generatingAudio } = useAiChatStream(projectId);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const isUserScrolledUp = useRef(false);
@@ -133,7 +210,7 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
   useEffect(() => {
     if (isUserScrolledUp.current) return;
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [history, streamingMessage, thinking, generatingAssets]);
+  }, [history, streamingMessage, thinking, generatingAssets, generatingAudio]);
 
   useEffect(() => {
     if (isStreaming) {
@@ -264,6 +341,13 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
                 </div>
               )}
 
+              {/* Audio generation progress */}
+              {generatingAudio.length > 0 && (
+                <div className="w-full max-w-[360px]">
+                  <AudioGenerationBlock audio={generatingAudio} />
+                </div>
+              )}
+
               {/* Streamed text response */}
               {visibleStream && (
                 <div className="px-3.5 py-2.5 rounded-2xl rounded-tl-sm bg-secondary text-secondary-foreground text-sm leading-relaxed">
@@ -333,10 +417,10 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
           </Button>
         </div>
 
-        {isStreaming && generatingAssets.length > 0 && (
+        {isStreaming && (generatingAssets.length > 0 || generatingAudio.length > 0) && (
           <p className="text-[10px] text-muted-foreground text-center mt-1.5 flex items-center justify-center gap-1">
-            <ImageIcon className="w-3 h-3" />
-            Generating assets — this may take 30–60 seconds
+            {generatingAudio.length > 0 ? <Music2 className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
+            Generating {generatingAudio.length > 0 ? "audio" : "assets"} — this may take 30–60 seconds
           </p>
         )}
       </div>

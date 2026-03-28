@@ -5,6 +5,7 @@ import projectsRouter from "./projects.js";
 import filesRouter from "./files.js";
 import aiRouter from "./ai.js";
 import assetsRouter from "./assets.js";
+import audioRouter from "./audio.js";
 import viteRouter from "./vite.js";
 import { db, projectsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -17,6 +18,7 @@ router.use("/projects", projectsRouter);
 router.use("/projects/:id", filesRouter);
 router.use("/projects/:id", aiRouter);
 router.use("/projects/:id", assetsRouter);
+router.use("/projects/:id", audioRouter);
 router.use("/projects/:id", viteRouter);
 
 // Public play lookup — resolves a slug to a project (for the SPA play page)

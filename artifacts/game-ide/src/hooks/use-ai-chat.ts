@@ -17,11 +17,26 @@ export interface GeneratingAsset {
   error?: string;
 }
 
+export interface GeneratingAudio {
+  index: number;
+  name: string;
+  audioType: string;
+  description: string;
+  status: 'generating' | 'done' | 'error';
+  path?: string;
+  previewUrl?: string;
+  loop?: boolean;
+  phaserLoadSnippet?: string;
+  phaserPlaySnippet?: string;
+  error?: string;
+}
+
 export function useAiChatStream(projectId: string) {
   const [streamingMessage, setStreamingMessage] = useState('');
   const [thinking, setThinking] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [generatingAssets, setGeneratingAssets] = useState<GeneratingAsset[]>([]);
+  const [generatingAudio, setGeneratingAudio] = useState<GeneratingAudio[]>([]);
   const queryClient = useQueryClient();
 
   const sendMessage = useCallback(async (message: string, contextFiles?: string[]) => {
@@ -29,6 +44,7 @@ export function useAiChatStream(projectId: string) {
     setStreamingMessage('');
     setThinking('');
     setGeneratingAssets([]);
+    setGeneratingAudio([]);
 
     try {
       const res = await fetch(`/api/projects/${projectId}/ai/chat`, {
@@ -70,11 +86,10 @@ export function useAiChatStream(projectId: string) {
                 setStreamingMessage(prev => prev + data.content);
 
               } else if (data.type === 'assets_start') {
-                // AI is starting to generate assets — reset asset list
                 setGeneratingAssets([]);
+                setGeneratingAudio([]);
 
               } else if (data.type === 'asset_generating') {
-                // A specific asset is being generated now
                 setGeneratingAssets(prev => [
                   ...prev.filter(a => a.index !== data.index),
                   {
@@ -104,7 +119,6 @@ export function useAiChatStream(projectId: string) {
                       : a
                   )
                 );
-                // Refresh asset browser
                 queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/assets`] });
 
               } else if (data.type === 'asset_error') {
@@ -116,9 +130,47 @@ export function useAiChatStream(projectId: string) {
                   )
                 );
 
+              } else if (data.type === 'audio_generating') {
+                setGeneratingAudio(prev => [
+                  ...prev.filter(a => a.index !== data.index),
+                  {
+                    index: data.index,
+                    name: data.name,
+                    audioType: data.audioType,
+                    description: data.description,
+                    status: 'generating',
+                  },
+                ]);
+
+              } else if (data.type === 'audio_done') {
+                setGeneratingAudio(prev =>
+                  prev.map(a =>
+                    a.index === data.index
+                      ? {
+                          ...a,
+                          status: 'done',
+                          path: data.path,
+                          previewUrl: data.previewUrl,
+                          loop: data.loop,
+                          phaserLoadSnippet: data.phaserLoadSnippet,
+                          phaserPlaySnippet: data.phaserPlaySnippet,
+                        }
+                      : a
+                  )
+                );
+                queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/audio`] });
+
+              } else if (data.type === 'audio_error') {
+                setGeneratingAudio(prev =>
+                  prev.map(a =>
+                    a.index === data.index
+                      ? { ...a, status: 'error', error: data.error }
+                      : a
+                  )
+                );
+
               } else if (data.type === 'assets_done') {
-                // All assets generated, AI is about to write code
-                // keep the assets visible in UI
+                // All generation done, AI is about to write code
 
               } else if (data.type === 'change') {
                 queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/files`] });
@@ -144,5 +196,5 @@ export function useAiChatStream(projectId: string) {
     }
   }, [projectId, queryClient]);
 
-  return { sendMessage, streamingMessage, thinking, isStreaming, generatingAssets };
+  return { sendMessage, streamingMessage, thinking, isStreaming, generatingAssets, generatingAudio };
 }
