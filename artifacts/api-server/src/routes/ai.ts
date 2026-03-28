@@ -13,6 +13,7 @@ import {
 } from "../services/filesystem.js";
 import { generateAssetForProject } from "../services/assetGeneration.js";
 import { generateAudioForProject } from "../services/audioPipeline.js";
+import { invalidateBundleCache } from "../services/preview-bundler.js";
 import { nanoid } from "../lib/nanoid.js";
 import { existsSync } from "fs";
 
@@ -818,6 +819,8 @@ router.post("/ai/chat", async (req, res) => {
         sendEvent({ type: "error", message: `Failed to write ${edit.path}` });
       }
     }
+    // Invalidate preview bundle so the next preview load re-bundles fresh code
+    invalidateBundleCache(id);
 
     if (edits.length > 0) {
       const fileCount = await countFiles(root);

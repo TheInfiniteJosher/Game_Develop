@@ -13,6 +13,7 @@ import {
   getViteStatus,
   buildViteProject,
 } from "./services/vite-manager.js";
+import { bundleHtmlPreview } from "./services/preview-bundler.js";
 import { existsSync } from "fs";
 import fs from "fs/promises";
 
@@ -224,7 +225,17 @@ app.use("/api/preview/:projectId", async (req, res, next) => {
   <script type="module" src="./${mainJs}"></script>
 </body>
 </html>`;
-        return res.setHeader("Content-Type", "text/html").send(injectConsoleScript(autoHtml));
+        // Bundle inline for production speed
+        try {
+          const bundled = await bundleHtmlPreview(projectId, autoHtml);
+          const finalHtml = bundled ?? autoHtml;
+          return res
+            .setHeader("Content-Type", "text/html")
+            .setHeader("Cache-Control", "no-cache, no-store, must-revalidate")
+            .send(injectConsoleScript(finalHtml));
+        } catch {
+          return res.setHeader("Content-Type", "text/html").send(injectConsoleScript(autoHtml));
+        }
       }
     }
     return next();
@@ -234,6 +245,23 @@ app.use("/api/preview/:projectId", async (req, res, next) => {
   if (entry.endsWith(".html") || entry.endsWith(".htm")) {
     try {
       const html = await fs.readFile(fullPath, "utf-8");
+
+      // For non-Vite projects: bundle all ESM imports into a single inline
+      // script to eliminate the module-fetch waterfall in production.
+      if (!hasViteDist) {
+        try {
+          const bundled = await bundleHtmlPreview(projectId, html);
+          if (bundled) {
+            return res
+              .setHeader("Content-Type", "text/html")
+              .setHeader("Cache-Control", "no-cache, no-store, must-revalidate")
+              .send(injectConsoleScript(bundled));
+          }
+        } catch {
+          // bundling failed – fall through to raw serving below
+        }
+      }
+
       return res
         .setHeader("Content-Type", "text/html")
         .setHeader("Cache-Control", "no-cache, no-store, must-revalidate")

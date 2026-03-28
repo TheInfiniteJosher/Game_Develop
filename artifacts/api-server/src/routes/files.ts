@@ -24,6 +24,7 @@ import {
 } from "../services/filesystem.js";
 import { nanoid } from "../lib/nanoid.js";
 import { isViteProject, buildViteProject, getViteStatus, scheduleRebuild } from "../services/vite-manager.js";
+import { invalidateBundleCache } from "../services/preview-bundler.js";
 
 const router: IRouter = Router({ mergeParams: true });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 100 * 1024 * 1024 } });
@@ -92,6 +93,7 @@ router.post("/files/write", async (req, res) => {
     } catch { /* new file */ }
 
     await writeFile(req.params.id, filePath, content);
+    invalidateBundleCache(req.params.id);
 
     // Record change
     await db.insert(fileChangesTable).values({
@@ -134,6 +136,7 @@ router.post("/files/rename", async (req, res) => {
     const { oldPath, newName } = req.body;
     if (!oldPath || !newName) return res.status(400).json({ error: "oldPath and newName required" });
     await renameFileOrFolder(req.params.id, oldPath, newName);
+    invalidateBundleCache(req.params.id);
     await updateProjectStats(req.params.id);
     scheduleRebuild(req.params.id);
     res.json({ success: true, message: "Renamed" });
@@ -165,6 +168,7 @@ router.delete("/files/delete", async (req, res) => {
     const filePath = req.query.path as string;
     if (!filePath) return res.status(400).json({ error: "path required" });
     await deleteFileOrFolder(req.params.id, filePath);
+    invalidateBundleCache(req.params.id);
     await updateProjectStats(req.params.id);
     scheduleRebuild(req.params.id);
     res.json({ success: true, message: "Deleted" });
