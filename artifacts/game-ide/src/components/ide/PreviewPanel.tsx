@@ -311,18 +311,25 @@ export function PreviewPanel({ projectId }: { projectId: string }) {
               sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"
             />
             {activeScene && (
-              <button
-                className="absolute bottom-0 left-0 right-0 h-6 bg-black/65 backdrop-blur-sm flex items-center px-3 gap-2 text-xs z-10 select-none hover:bg-black/80 transition-colors group w-full text-left"
-                onClick={() => handleSceneClick(activeScene)}
-                title={`Open scene file: ${activeScene}`}
-              >
+              <div className="absolute bottom-0 left-0 right-0 h-6 bg-black/65 backdrop-blur-sm flex items-center px-3 gap-2 text-xs z-10 select-none">
                 <span className={`w-1.5 h-1.5 rounded-full bg-green-400 shrink-0 ${sceneLoading ? "animate-spin" : "animate-pulse"}`} />
-                <span className="text-white/50 font-medium">Scene</span>
-                <span className="font-mono text-blue-300 font-semibold truncate group-hover:text-blue-200 group-hover:underline">
-                  {activeScene}
-                </span>
-                {sceneLoading && <span className="ml-auto text-white/30 text-[10px]">opening…</span>}
-              </button>
+                <span className="text-white/50 font-medium shrink-0">Scene</span>
+                <div className="flex items-center gap-1 min-w-0 overflow-hidden">
+                  {activeScene.split(/\s*\+\s*/).map((scene, i, arr) => (
+                    <span key={scene} className="flex items-center gap-1 min-w-0">
+                      <button
+                        className="font-mono text-blue-300 font-semibold hover:text-blue-100 hover:underline truncate cursor-pointer"
+                        onClick={() => handleSceneClick(scene)}
+                        title={`Open ${scene}`}
+                      >
+                        {scene}
+                      </button>
+                      {i < arr.length - 1 && <span className="text-white/30 shrink-0">+</span>}
+                    </span>
+                  ))}
+                </div>
+                {sceneLoading && <span className="ml-auto text-white/30 text-[10px] shrink-0">opening…</span>}
+              </div>
             )}
           </>
         ) : (
