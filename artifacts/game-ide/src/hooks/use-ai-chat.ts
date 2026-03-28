@@ -31,16 +31,24 @@ export interface GeneratingAudio {
   error?: string;
 }
 
+export type AiPhase =
+  | 'idle'
+  | 'thinking'       // initial reasoning before any output
+  | 'generating'     // generating assets / audio
+  | 'writing'        // writing game files (code output)
+
 export function useAiChatStream(projectId: string) {
   const [streamingMessage, setStreamingMessage] = useState('');
   const [thinking, setThinking] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [phase, setPhase] = useState<AiPhase>('idle');
   const [generatingAssets, setGeneratingAssets] = useState<GeneratingAsset[]>([]);
   const [generatingAudio, setGeneratingAudio] = useState<GeneratingAudio[]>([]);
   const queryClient = useQueryClient();
 
   const sendMessage = useCallback(async (message: string, contextFiles?: string[]) => {
     setIsStreaming(true);
+    setPhase('thinking');
     setStreamingMessage('');
     setThinking('');
     setGeneratingAssets([]);
@@ -80,14 +88,18 @@ export function useAiChatStream(projectId: string) {
 
               if (data.type === 'thinking') {
                 setThinking(prev => prev + (data.content || ''));
+                setPhase('thinking');
               } else if (data.type === 'thinking_done') {
                 setThinking('');
+                // phase stays 'thinking' until we know what comes next
               } else if (data.type === 'delta') {
                 setStreamingMessage(prev => prev + data.content);
+                setPhase('writing');
 
               } else if (data.type === 'assets_start') {
                 setGeneratingAssets([]);
                 setGeneratingAudio([]);
+                setPhase('generating');
 
               } else if (data.type === 'asset_generating') {
                 setGeneratingAssets(prev => [
@@ -170,7 +182,7 @@ export function useAiChatStream(projectId: string) {
                 );
 
               } else if (data.type === 'assets_done') {
-                // All generation done, AI is about to write code
+                setPhase('writing');
 
               } else if (data.type === 'change') {
                 queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/files`] });
@@ -192,9 +204,10 @@ export function useAiChatStream(projectId: string) {
       console.error('Chat error', error);
     } finally {
       setIsStreaming(false);
+      setPhase('idle');
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/ai/history`] });
     }
   }, [projectId, queryClient]);
 
-  return { sendMessage, streamingMessage, thinking, isStreaming, generatingAssets, generatingAudio };
+  return { sendMessage, streamingMessage, thinking, isStreaming, phase, generatingAssets, generatingAudio };
 }

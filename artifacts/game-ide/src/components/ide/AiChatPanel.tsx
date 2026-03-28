@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useGetAiHistory, useClearAiHistory } from "@/hooks/use-api";
-import { useAiChatStream, type GeneratingAsset, type GeneratingAudio } from "@/hooks/use-ai-chat";
+import { useAiChatStream, type AiPhase, type GeneratingAsset, type GeneratingAudio } from "@/hooks/use-ai-chat";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Send, Trash2, ChevronRight, Bot, User, Loader2, FileCode2,
   Sparkles, ImageIcon, CheckCircle2, AlertCircle, Wand2, Music2, Volume2,
+  PenLine, Cpu,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import ReactMarkdown from "react-markdown";
@@ -20,6 +21,61 @@ function countOpenFileTags(text: string) {
     const match = m.match(/path="([^"]+)"/);
     return match ? match[1] : "";
   });
+}
+
+// ─── Working status bar ───────────────────────────────────────────────────────
+
+function WorkingStatusBar({
+  phase,
+  generatingAssets,
+  generatingAudio,
+  writingFiles,
+}: {
+  phase: AiPhase;
+  generatingAssets: GeneratingAsset[];
+  generatingAudio: GeneratingAudio[];
+  writingFiles: string[];
+}) {
+  const doneAssets = generatingAssets.filter(a => a.status === "done").length;
+  const doneAudio  = generatingAudio.filter(a => a.status === "done").length;
+  const totalAssets = generatingAssets.length;
+  const totalAudio  = generatingAudio.length;
+
+  let icon: React.ReactNode;
+  let label: string;
+  let sub: string | null = null;
+
+  if (phase === "thinking") {
+    icon  = <Cpu className="w-3 h-3 text-primary animate-pulse" />;
+    label = "Thinking…";
+  } else if (phase === "generating") {
+    icon  = <Sparkles className="w-3 h-3 text-amber-400 animate-pulse" />;
+    const parts: string[] = [];
+    if (totalAssets > 0) parts.push(`${doneAssets}/${totalAssets} assets`);
+    if (totalAudio  > 0) parts.push(`${doneAudio}/${totalAudio} audio`);
+    label = `Generating ${parts.join(", ")}…`;
+  } else if (phase === "writing") {
+    icon  = <PenLine className="w-3 h-3 text-green-400" />;
+    label = "Writing game files…";
+    if (writingFiles.length > 0) sub = writingFiles[writingFiles.length - 1];
+  } else {
+    return null;
+  }
+
+  return (
+    <div className="px-3 py-1.5 border-b border-border bg-card/50 shrink-0 flex items-center gap-2 min-h-0">
+      {/* pulsing dot */}
+      <span className="relative flex h-2 w-2 shrink-0">
+        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary/80" />
+      </span>
+      {icon}
+      <span className="text-[11px] text-muted-foreground">{label}</span>
+      {sub && (
+        <code className="text-[10px] text-primary/60 truncate max-w-[160px] ml-auto">{sub}</code>
+      )}
+    </div>
+  );
 }
 
 // ─── Asset generation progress card ──────────────────────────────────────────
@@ -194,7 +250,7 @@ function AudioGenerationBlock({ audio }: { audio: GeneratingAudio[] }) {
 export function AiChatPanel({ projectId }: { projectId: string }) {
   const { data: history } = useGetAiHistory(projectId);
   const clearHistory = useClearAiHistory();
-  const { sendMessage, streamingMessage, thinking, isStreaming, generatingAssets, generatingAudio } = useAiChatStream(projectId);
+  const { sendMessage, streamingMessage, thinking, isStreaming, phase, generatingAssets, generatingAudio } = useAiChatStream(projectId);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const isUserScrolledUp = useRef(false);
@@ -244,6 +300,16 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
+
+      {/* Live working status bar */}
+      {isStreaming && (
+        <WorkingStatusBar
+          phase={phase}
+          generatingAssets={generatingAssets}
+          generatingAudio={generatingAudio}
+          writingFiles={writingFiles}
+        />
+      )}
 
       {/* Message list */}
       <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -310,25 +376,29 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
               {thinking !== undefined && (
                 <Collapsible open={thinkingOpen} onOpenChange={setThinkingOpen}>
                   <CollapsibleTrigger className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-lg hover:bg-secondary/50 group">
-                    {visibleStream || generatingAssets.length > 0 ? (
-                      <ChevronRight className="h-3 w-3 transition-transform group-data-[state=open]:rotate-90" />
+                    {phase === "thinking" ? (
+                      <Loader2 className="h-3 w-3 animate-spin shrink-0" />
                     ) : (
-                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <ChevronRight className="h-3 w-3 transition-transform group-data-[state=open]:rotate-90 shrink-0" />
                     )}
                     <span className="flex items-center gap-1">
-                      Thinking
-                      {!visibleStream && generatingAssets.length === 0 && (
-                        <span className="flex gap-0.5 ml-0.5">
-                          <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
-                          <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
-                          <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "300ms" }} />
-                        </span>
+                      {phase === "thinking" ? (
+                        <>
+                          Thinking
+                          <span className="flex gap-0.5 ml-0.5">
+                            <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "0ms" }} />
+                            <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "150ms" }} />
+                            <span className="w-1 h-1 rounded-full bg-muted-foreground animate-bounce" style={{ animationDelay: "300ms" }} />
+                          </span>
+                        </>
+                      ) : (
+                        <span className="opacity-60">Reasoned</span>
                       )}
                     </span>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <div className="text-[11px] text-muted-foreground border-l-2 border-muted pl-3 py-1 ml-2 max-h-32 overflow-y-auto leading-relaxed">
-                      {thinking || "Analyzing..."}
+                      {thinking || "Analyzing…"}
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
