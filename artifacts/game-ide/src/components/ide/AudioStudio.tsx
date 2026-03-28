@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   Music2, Volume2, Loader2, Play, Pause, Trash2, CheckCircle2, AlertCircle,
-  Radio, Wand2, WifiOff,
+  Radio, Wand2, WifiOff, Download, Upload,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -25,6 +25,21 @@ interface AudioAsset {
     description?: string;
     durationSeconds?: number;
   };
+}
+
+// ─── Download helper ──────────────────────────────────────────────────────────
+
+async function downloadAudio(previewUrl: string, filename: string) {
+  try {
+    const res = await fetch(previewUrl);
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch { /* ignore */ }
 }
 
 // ─── Audio player ─────────────────────────────────────────────────────────────
@@ -97,8 +112,16 @@ function AudioItem({
       </div>
       <AudioPlayer src={audio.previewUrl} loop={audio.loop} />
       <button
+        onClick={() => downloadAudio(audio.previewUrl, audio.filename)}
+        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-violet-400 p-1 rounded transition-all"
+        title="Download"
+      >
+        <Download className="w-3.5 h-3.5" />
+      </button>
+      <button
         onClick={() => onDelete(audio.path)}
         className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 rounded transition-all"
+        title="Delete"
       >
         <Trash2 className="w-3.5 h-3.5" />
       </button>
@@ -136,13 +159,18 @@ export function AudioStudio({ projectId }: { projectId: string }) {
   const [duration, setDuration] = useState("medium");
   const [mood, setMood] = useState("");
   const [lastGenerated, setLastGenerated] = useState<{
-    name: string; path: string; previewUrl: string;
+    filename: string; path: string; previewUrl: string;
     phaserLoadSnippet: string; phaserPlaySnippet: string; loop: boolean;
   } | null>(null);
   const [genError, setGenError] = useState("");
+  const [uploadError, setUploadError] = useState("");
+  const [uploadAudioType, setUploadAudioType] = useState("sfx");
+  const uploadRef = useRef<HTMLInputElement>(null);
+
+  const audioQueryKey = [`/api/projects/${projectId}/audio`];
 
   const { data: audioList = [] } = useQuery<AudioAsset[]>({
-    queryKey: [`/api/projects/${projectId}/audio`],
+    queryKey: audioQueryKey,
     queryFn: async () => {
       const res = await fetch(`/api/projects/${projectId}/audio`);
       if (!res.ok) return [];
@@ -176,8 +204,15 @@ export function AudioStudio({ projectId }: { projectId: string }) {
       return res.json();
     },
     onSuccess: (data) => {
-      setLastGenerated(data);
-      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/audio`] });
+      setLastGenerated({
+        filename: data.filename ?? "",
+        path: data.path ?? "",
+        previewUrl: data.previewUrl ?? "",
+        phaserLoadSnippet: data.phaserLoadSnippet ?? "",
+        phaserPlaySnippet: data.phaserPlaySnippet ?? "",
+        loop: data.loop ?? false,
+      });
+      queryClient.invalidateQueries({ queryKey: audioQueryKey });
     },
     onError: (err: Error) => {
       setGenError(err.message);
@@ -192,8 +227,30 @@ export function AudioStudio({ projectId }: { projectId: string }) {
         body: JSON.stringify({ path }),
       });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/audio`] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: audioQueryKey }),
   });
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError("");
+    const form = new FormData();
+    form.append("file", file);
+    form.append("audioType", uploadAudioType);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/audio/upload`, {
+        method: "POST",
+        body: form,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      queryClient.invalidateQueries({ queryKey: audioQueryKey });
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      if (uploadRef.current) uploadRef.current.value = "";
+    }
+  };
 
   const isLoading = generateMutation.isPending;
 
@@ -378,9 +435,16 @@ export function AudioStudio({ projectId }: { projectId: string }) {
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-violet-400 shrink-0" />
                 <span className="text-xs font-semibold text-violet-300 truncate">
-                  {lastGenerated.name.replace(/_/g, " ")}
+                  {lastGenerated.filename.replace(/\.\w+$/, "").replace(/_/g, " ")}
                 </span>
-                <div className="ml-auto">
+                <div className="ml-auto flex items-center gap-1">
+                  <button
+                    onClick={() => downloadAudio(lastGenerated.previewUrl, lastGenerated.filename)}
+                    className="p-1 rounded text-muted-foreground hover:text-violet-400 transition-colors"
+                    title="Download"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                  </button>
                   <AudioPlayer src={lastGenerated.previewUrl} loop={lastGenerated.loop} />
                 </div>
               </div>
@@ -393,6 +457,42 @@ export function AudioStudio({ projectId }: { projectId: string }) {
                 </div>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Upload Section */}
+        <div className="p-3 border-b border-border space-y-2">
+          <div className="flex items-center justify-between">
+            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Upload Audio</Label>
+            <div className="flex gap-1">
+              {(["sfx", "music", "ambient", "ui"] as const).map(t => (
+                <button
+                  key={t}
+                  onClick={() => setUploadAudioType(t)}
+                  className={`px-1.5 py-0.5 rounded text-[10px] border transition-all capitalize ${
+                    uploadAudioType === t
+                      ? "border-violet-500/60 bg-violet-500/20 text-violet-300"
+                      : "border-border/50 bg-muted/20 text-muted-foreground hover:border-border"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+          <label className="flex items-center justify-center gap-2 h-9 rounded-lg border border-dashed border-border/60 hover:border-violet-500/50 hover:bg-violet-500/5 cursor-pointer transition-colors text-xs text-muted-foreground">
+            <Upload className="w-3.5 h-3.5" />
+            <span>Drop MP3 / OGG / WAV or click</span>
+            <input
+              ref={uploadRef}
+              type="file"
+              accept=".mp3,.ogg,.wav,audio/*"
+              className="hidden"
+              onChange={handleUpload}
+            />
+          </label>
+          {uploadError && (
+            <div className="text-[10px] text-red-400 bg-red-400/10 border border-red-400/20 rounded p-1.5">{uploadError}</div>
           )}
         </div>
 
@@ -442,7 +542,7 @@ export function AudioStudio({ projectId }: { projectId: string }) {
         {audioList.length === 0 && !isLoading && (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground opacity-50 space-y-2">
             <Music2 className="w-10 h-10" />
-            <p className="text-xs">No audio yet. Generate your first sound!</p>
+            <p className="text-xs">No audio yet. Generate or upload your first sound!</p>
           </div>
         )}
       </div>

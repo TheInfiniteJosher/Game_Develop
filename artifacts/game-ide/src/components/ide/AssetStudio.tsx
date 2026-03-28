@@ -1,7 +1,19 @@
-import { useState, useCallback, useEffect } from "react";
-import { Sparkles, Loader2, Copy, ChevronDown, ChevronUp, Wand2, ImageIcon } from "lucide-react";
+import { useState } from "react";
+import { Sparkles, Loader2, Copy, ChevronDown, ChevronUp, Wand2, ImageIcon, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+
+async function downloadFile(url: string, filename: string) {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch { /* ignore */ }
+}
 
 interface GeneratedAsset {
   path: string;
@@ -305,6 +317,13 @@ export function AssetStudio({ projectId, onAssetGenerated }: AssetStudioProps) {
             >
               <Copy className="w-3 h-3" />
               {copiedPath ? "Copied!" : "Copy Path"}
+            </button>
+            <button
+              onClick={() => downloadFile(result.previewUrl, result.filename)}
+              className="flex items-center justify-center gap-1 text-xs py-1.5 px-2.5 rounded border border-border bg-muted/30 hover:bg-muted/60 transition-colors"
+              title="Download"
+            >
+              <Download className="w-3 h-3" />
             </button>
             <button
               onClick={() => setShowSnippet(v => !v)}

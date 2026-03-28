@@ -3,7 +3,10 @@ import OpenAI from "openai";
 import path from "path";
 import fs from "fs/promises";
 import { existsSync } from "fs";
+import multer from "multer";
 import { getProjectRoot } from "../services/filesystem.js";
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 
 const router: IRouter = Router({ mergeParams: true });
 
@@ -214,6 +217,47 @@ router.get("/assets", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to list assets");
     res.status(500).json({ error: "Failed to list assets" });
+  }
+});
+
+router.post("/assets/upload", upload.single("file"), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No file provided" });
+
+    const { assetType = "sprite" } = req.body;
+    const allowedMimes = ["image/png", "image/jpeg", "image/gif", "image/webp"];
+    if (!allowedMimes.includes(req.file.mimetype)) {
+      return res.status(400).json({ error: "Only PNG, JPG, GIF, and WebP images are supported" });
+    }
+
+    const folder = ASSET_FOLDERS[assetType] || "assets/sprites";
+    const projectRoot = getProjectRoot(req.params.id);
+    const assetDir = path.join(projectRoot, folder);
+    await fs.mkdir(assetDir, { recursive: true });
+
+    const ext = req.file.originalname.split(".").pop()?.toLowerCase() || "png";
+    const base = req.file.originalname.replace(/\.[^.]+$/, "")
+      .toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 40);
+    const timestamp = Date.now();
+    const filename = `${base}_${timestamp}.${ext}`;
+    const fullFilePath = path.join(assetDir, filename);
+    const relativePath = `${folder}/${filename}`;
+
+    await fs.writeFile(fullFilePath, req.file.buffer);
+
+    const metadata = { assetType, createdAt: new Date().toISOString(), uploaded: true };
+    await fs.writeFile(fullFilePath.replace(/\.[^.]+$/, ".meta.json"), JSON.stringify(metadata, null, 2));
+
+    res.json({
+      path: relativePath,
+      filename,
+      assetType,
+      metadata,
+      previewUrl: `/api/preview/${req.params.id}/${relativePath}`,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Asset upload failed");
+    res.status(500).json({ error: "Asset upload failed" });
   }
 });
 

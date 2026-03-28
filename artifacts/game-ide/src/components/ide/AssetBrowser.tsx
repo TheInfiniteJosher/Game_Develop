@@ -1,5 +1,8 @@
 import { useState, useCallback, useEffect, useRef } from "react";
-import { Sparkles, RefreshCw, Copy, Trash2, Wand2, ChevronDown, ChevronUp, Pencil, Check, X } from "lucide-react";
+import {
+  Sparkles, RefreshCw, Copy, Trash2, Wand2, ChevronDown, ChevronUp,
+  Pencil, Check, X, Download, Upload, Music2, Volume2, Play, Pause, Radio,
+} from "lucide-react";
 import { useRenameFile } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
 
@@ -18,10 +21,35 @@ interface GeneratedAsset {
   };
 }
 
+interface AudioAsset {
+  path: string;
+  filename: string;
+  audioType: string;
+  previewUrl: string;
+  loop: boolean;
+  metadata?: { audioName?: string; durationSeconds?: number };
+}
+
 interface AssetBrowserProps {
   projectId: string;
   onGenerateClick: () => void;
 }
+
+// ─── Download helper ──────────────────────────────────────────────────────────
+
+async function downloadFile(url: string, filename: string) {
+  try {
+    const res = await fetch(url);
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  } catch { /* ignore */ }
+}
+
+// ─── Code snippet ─────────────────────────────────────────────────────────────
 
 function getCodeSnippet(asset: GeneratedAsset): string {
   const name = asset.filename.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9_]/g, "_");
@@ -54,6 +82,8 @@ function groupAssets(assets: GeneratedAsset[]) {
   return groups;
 }
 
+// ─── Rename input ─────────────────────────────────────────────────────────────
+
 function RenameInput({
   initial,
   onCommit,
@@ -84,21 +114,63 @@ function RenameInput({
   );
 }
 
+// ─── Inline audio player ──────────────────────────────────────────────────────
+
+function MiniAudioPlayer({ src, loop }: { src: string; loop: boolean }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  const toggle = () => {
+    const el = audioRef.current;
+    if (!el) return;
+    if (playing) { el.pause(); setPlaying(false); }
+    else { el.loop = loop; el.play().then(() => setPlaying(true)).catch(() => setPlaying(false)); }
+  };
+  return (
+    <div className="flex items-center gap-1">
+      <audio ref={audioRef} src={src} onEnded={() => setPlaying(false)} />
+      <button
+        onClick={toggle}
+        className={`flex items-center justify-center w-5 h-5 rounded-full transition-colors ${
+          playing ? "bg-violet-500 text-white" : "bg-violet-500/15 text-violet-400 hover:bg-violet-500/30"
+        }`}
+      >
+        {playing ? <Pause className="w-2.5 h-2.5" /> : <Play className="w-2.5 h-2.5" />}
+      </button>
+    </div>
+  );
+}
+
+function AudioTypeIcon({ type }: { type: string }) {
+  if (type === "music") return <Music2 className="w-3 h-3 text-violet-400" />;
+  if (type === "ambient") return <Radio className="w-3 h-3 text-blue-400" />;
+  return <Volume2 className="w-3 h-3 text-orange-400" />;
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) {
   const [assets, setAssets] = useState<GeneratedAsset[]>([]);
+  const [audioAssets, setAudioAssets] = useState<AudioAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<GeneratedAsset | null>(null);
   const [showSnippet, setShowSnippet] = useState(false);
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
   const [copiedSnippet, setCopiedSnippet] = useState(false);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
+  const [uploadAssetType, setUploadAssetType] = useState("sprite");
+  const [uploadError, setUploadError] = useState("");
+  const uploadRef = useRef<HTMLInputElement>(null);
   const renameFile = useRenameFile();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/projects/${projectId}/assets`);
-      if (res.ok) setAssets(await res.json());
+      const [imgRes, audRes] = await Promise.all([
+        fetch(`/api/projects/${projectId}/assets`),
+        fetch(`/api/projects/${projectId}/audio`),
+      ]);
+      if (imgRes.ok) setAssets(await imgRes.json());
+      if (audRes.ok) setAudioAssets(await audRes.json());
     } catch { /* ignore */ }
     finally { setLoading(false); }
   }, [projectId]);
@@ -117,15 +189,23 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
     } catch { /* ignore */ }
   };
 
+  const handleDeleteAudio = async (audioPath: string) => {
+    try {
+      await fetch(`/api/projects/${projectId}/audio`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: audioPath }),
+      });
+      await load();
+    } catch { /* ignore */ }
+  };
+
   const handleRename = (asset: GeneratedAsset, newName: string) => {
     if (!newName || newName === asset.filename) { setRenamingPath(null); return; }
     renameFile.mutate(
       { id: projectId, data: { oldPath: asset.path, newName } },
       {
-        onSuccess: async () => {
-          setRenamingPath(null);
-          await load();
-        },
+        onSuccess: async () => { setRenamingPath(null); await load(); },
         onError: () => setRenamingPath(null),
       }
     );
@@ -143,14 +223,37 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
     setTimeout(() => setCopiedSnippet(false), 2000);
   };
 
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadError("");
+    const form = new FormData();
+    form.append("file", file);
+    form.append("assetType", uploadAssetType);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/assets/upload`, {
+        method: "POST",
+        body: form,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      await load();
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : "Upload failed");
+    } finally {
+      if (uploadRef.current) uploadRef.current.value = "";
+    }
+  };
+
   const groups = groupAssets(assets);
+  const totalCount = assets.length + audioAssets.length;
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-2 py-1.5 border-b border-border shrink-0">
         <span className="text-xs font-semibold tracking-wider uppercase text-muted-foreground">
-          Assets {assets.length > 0 && <span className="text-muted-foreground/60 font-normal">({assets.length})</span>}
+          Assets {totalCount > 0 && <span className="text-muted-foreground/60 font-normal">({totalCount})</span>}
         </span>
         <div className="flex items-center gap-1">
           <button onClick={load} className="text-muted-foreground hover:text-foreground p-1 rounded" title="Refresh">
@@ -168,16 +271,46 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
         </div>
       </div>
 
+      {/* Upload bar */}
+      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-border bg-sidebar/50 shrink-0">
+        <select
+          value={uploadAssetType}
+          onChange={e => setUploadAssetType(e.target.value)}
+          className="text-[10px] bg-muted/40 border border-border rounded px-1 py-0.5 text-muted-foreground h-6 outline-none"
+        >
+          <option value="sprite">Sprite</option>
+          <option value="animation">Sheet</option>
+          <option value="tileset">Tileset</option>
+          <option value="background">BG</option>
+          <option value="ui">UI</option>
+          <option value="vfx">VFX</option>
+        </select>
+        <label className="flex-1 flex items-center justify-center gap-1 h-6 rounded border border-dashed border-border/60 hover:border-primary/50 hover:text-primary cursor-pointer transition-colors text-[10px] text-muted-foreground">
+          <Upload className="w-3 h-3" />
+          Upload image
+          <input
+            ref={uploadRef}
+            type="file"
+            accept=".png,.jpg,.jpeg,.gif,.webp,image/*"
+            className="hidden"
+            onChange={handleUpload}
+          />
+        </label>
+        {uploadError && (
+          <span className="text-[10px] text-red-400 truncate max-w-[120px]" title={uploadError}>{uploadError}</span>
+        )}
+      </div>
+
       {/* Scrollable content */}
       <div className="flex-1 overflow-y-auto">
-        {assets.length === 0 && !loading && (
+        {totalCount === 0 && !loading && (
           <div className="flex flex-col items-center justify-center py-12 px-4 text-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-primary/50" />
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground">No assets yet</p>
-              <p className="text-xs text-muted-foreground/60 mt-0.5">Generate your first asset below</p>
+              <p className="text-xs text-muted-foreground/60 mt-0.5">Generate or upload your first asset</p>
             </div>
             <Button size="sm" className="h-7 text-xs gap-1.5" onClick={onGenerateClick}
               style={{ background: "linear-gradient(135deg, #F97316, #EA580C)" }}>
@@ -186,7 +319,7 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
           </div>
         )}
 
-        {/* Grouped asset grid */}
+        {/* Grouped image asset grid */}
         {Object.entries(groups).map(([group, items]) => (
           <div key={group} className="border-b border-border last:border-0">
             <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-sidebar">
@@ -218,6 +351,13 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
                         title="Copy path"
                       >
                         <Copy className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); downloadFile(asset.previewUrl, asset.filename); }}
+                        className="p-1.5 rounded bg-card border border-border hover:border-primary/50 hover:text-primary transition-colors"
+                        title="Download"
+                      >
+                        <Download className="w-3 h-3" />
                       </button>
                       <button
                         onClick={e => { e.stopPropagation(); setRenamingPath(asset.path); }}
@@ -260,6 +400,48 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
           </div>
         ))}
 
+        {/* Audio assets section */}
+        {audioAssets.length > 0 && (
+          <div className="border-t border-border">
+            <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-sidebar flex items-center gap-1.5">
+              <Music2 className="w-3 h-3 text-violet-400" />
+              Audio
+            </div>
+            <div className="p-1.5 space-y-1">
+              {audioAssets.map(audio => {
+                const name = audio.metadata?.audioName || audio.filename.replace(/\.\w+$/, "");
+                return (
+                  <div
+                    key={audio.path}
+                    className="group flex items-center gap-2 px-2 py-1.5 rounded-lg border border-border/50 hover:border-violet-500/30 bg-card hover:bg-violet-500/5 transition-all"
+                  >
+                    <AudioTypeIcon type={audio.audioType} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-semibold truncate">{name.replace(/_/g, " ")}</div>
+                      <div className="text-[9px] text-muted-foreground capitalize">{audio.audioType}{audio.loop ? " · loop" : ""}</div>
+                    </div>
+                    <MiniAudioPlayer src={audio.previewUrl} loop={audio.loop} />
+                    <button
+                      onClick={() => downloadFile(audio.previewUrl, audio.filename)}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-violet-400 p-1 rounded transition-all"
+                      title="Download"
+                    >
+                      <Download className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteAudio(audio.path)}
+                      className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive p-1 rounded transition-all"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {/* Selected asset detail */}
         {selectedAsset && (
           <div className="border-t border-border bg-sidebar p-2 space-y-2">
@@ -290,6 +472,13 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
               >
                 <Copy className="w-3 h-3" />
                 {copiedPath === selectedAsset.path ? "Copied!" : "Copy Path"}
+              </button>
+              <button
+                onClick={() => downloadFile(selectedAsset.previewUrl, selectedAsset.filename)}
+                className="flex items-center justify-center gap-1 text-[10px] py-1 px-2 rounded border border-border bg-muted/30 hover:bg-muted/60 transition-colors"
+                title="Download"
+              >
+                <Download className="w-3 h-3" />
               </button>
               <button
                 onClick={() => setShowSnippet(v => !v)}
