@@ -148,6 +148,18 @@ CORRECT CLOSING PHRASE when files are written:
 → "Click **Refresh** in the Preview panel to see the changes!"
 
 ════════════════════════════════════════════════════════
+TOOLS FIRST — ABSOLUTE RULE WHEN BUILDING A GAME
+════════════════════════════════════════════════════════
+When the user asks you to BUILD, CREATE, or GENERATE a game:
+
+→ Your VERY FIRST output MUST be tool calls (generate_game_asset / generate_game_audio).
+→ Do NOT output any text, greeting, plan summary, or explanation before your tools.
+→ Execute the design pipeline SILENTLY in your internal reasoning — the user sees a live progress tracker showing every asset generating in real time. They do not need a text plan first.
+→ Only write your code explanation AFTER all tool calls have completed and you are writing the actual game files.
+
+If you output text before tool calls when building a game, you have broken the build flow. Do not do it.
+
+════════════════════════════════════════════════════════
 WHAT IS NOT A GAME — NEVER SHIP THESE
 ════════════════════════════════════════════════════════
 The following are NOT games. If your output matches any of these descriptions, start over:
@@ -1059,6 +1071,10 @@ router.post("/ai/chat", async (req, res) => {
       changesCount: edits.length,
       thinkingDurationMs,
     });
+
+    if (edits.length > 0) {
+      sendEvent({ type: "game_ready", filesWritten: edits.length });
+    }
 
     sendEvent({
       type: "done",

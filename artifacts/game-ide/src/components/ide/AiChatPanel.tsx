@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useGetAiHistory, useClearAiHistory } from "@/hooks/use-api";
 import { useAiChatStream, type AiPhase, type GeneratingAsset, type GeneratingAudio } from "@/hooks/use-ai-chat";
+import { useIde } from "@/hooks/use-ide";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Send, Square, Trash2, ChevronRight, Bot, User, Loader2, FileCode2,
   Sparkles, ImageIcon, CheckCircle2, AlertCircle, Wand2, Music2, Volume2,
-  PenLine, Cpu,
+  PenLine, Cpu, Gamepad2, Check,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import ReactMarkdown from "react-markdown";
@@ -23,7 +24,155 @@ function countOpenFileTags(text: string) {
   });
 }
 
-// ─── Working status bar ───────────────────────────────────────────────────────
+// ─── Build progress tracker (replaces status bar during game builds) ──────────
+
+type StepStatus = 'pending' | 'active' | 'done' | 'skipped';
+
+interface BuildStepDef {
+  id: string;
+  label: string;
+  detail?: string;
+  status: StepStatus;
+}
+
+function BuildStep({ step }: { step: BuildStepDef }) {
+  const isActive = step.status === 'active';
+  const isDone = step.status === 'done';
+  const isPending = step.status === 'pending';
+
+  return (
+    <div className={`flex items-center gap-2.5 py-1 transition-all ${isPending ? 'opacity-40' : 'opacity-100'}`}>
+      <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all ${
+        isDone
+          ? 'bg-green-500/20 text-green-400 border border-green-500/40'
+          : isActive
+            ? 'bg-primary/20 text-primary border border-primary/40'
+            : 'bg-muted/40 text-muted-foreground border border-muted/30'
+      }`}>
+        {isDone ? (
+          <Check className="w-2.5 h-2.5 stroke-[3]" />
+        ) : isActive ? (
+          <Loader2 className="w-2.5 h-2.5 animate-spin" />
+        ) : (
+          <span className="w-1.5 h-1.5 rounded-full bg-current" />
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <span className={`text-xs ${isActive ? 'text-foreground font-medium' : isDone ? 'text-muted-foreground line-through' : 'text-muted-foreground'}`}>
+          {step.label}
+        </span>
+        {step.detail && isActive && (
+          <span className="text-[10px] text-primary/70 ml-1.5">{step.detail}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BuildProgressTracker({
+  phase,
+  generatingAssets,
+  generatingAudio,
+  isBuildComplete,
+  filesWritten,
+  writingFiles,
+}: {
+  phase: AiPhase;
+  generatingAssets: GeneratingAsset[];
+  generatingAudio: GeneratingAudio[];
+  isBuildComplete: boolean;
+  filesWritten: number;
+  writingFiles: string[];
+}) {
+  const doneAssets = generatingAssets.filter(a => a.status === 'done' || a.status === 'error').length;
+  const doneAudio  = generatingAudio.filter(a => a.status === 'done' || a.status === 'error').length;
+  const totalAssets = generatingAssets.length;
+  const totalAudio  = generatingAudio.length;
+  const allAssetsDone = totalAssets > 0 && doneAssets === totalAssets;
+  const allAudioDone  = totalAudio  > 0 && doneAudio  === totalAudio;
+
+  const isWriting = phase === 'writing' || phase === 'complete';
+  const isGenerating = phase === 'generating';
+
+  const steps: BuildStepDef[] = [
+    {
+      id: 'design',
+      label: 'Designing game',
+      status: (isGenerating || isWriting || isBuildComplete) ? 'done' : 'active',
+    },
+    {
+      id: 'assets',
+      label: totalAssets > 0
+        ? `Generating assets (${doneAssets}/${totalAssets})`
+        : 'Generating assets…',
+      detail: doneAssets < totalAssets && isGenerating
+        ? generatingAssets.find(a => a.status === 'generating')?.name?.replace(/_/g, ' ')
+        : undefined,
+      status: totalAssets === 0
+        ? (isGenerating ? 'active' : 'pending')
+        : allAssetsDone
+          ? 'done'
+          : isGenerating
+            ? 'active'
+            : 'pending',
+    },
+    ...(totalAudio > 0 ? [{
+      id: 'audio',
+      label: `Generating audio (${doneAudio}/${totalAudio})`,
+      detail: doneAudio < totalAudio && isGenerating
+        ? generatingAudio.find(a => a.status === 'generating')?.name?.replace(/_/g, ' ')
+        : undefined,
+      status: (allAudioDone ? 'done' : isGenerating ? 'active' : 'pending') as StepStatus,
+    }] : []),
+    {
+      id: 'code',
+      label: isBuildComplete
+        ? `Wrote ${filesWritten} file${filesWritten !== 1 ? 's' : ''}`
+        : isWriting
+          ? `Writing code${writingFiles.length > 0 ? ` (${writingFiles.length} files…)` : '…'}`
+          : 'Writing game code',
+      detail: isWriting && writingFiles.length > 0
+        ? writingFiles[writingFiles.length - 1]
+        : undefined,
+      status: isBuildComplete ? 'done' : isWriting ? 'active' : 'pending',
+    },
+    {
+      id: 'ready',
+      label: isBuildComplete ? '🎮 Game ready! Preview refreshed.' : 'Game ready',
+      status: isBuildComplete ? 'done' : 'pending',
+    },
+  ];
+
+  return (
+    <div className="mt-2 rounded-xl border border-primary/25 bg-primary/5 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-primary/20">
+        <div className="w-5 h-5 rounded-md bg-primary/20 flex items-center justify-center shrink-0">
+          {isBuildComplete ? (
+            <Gamepad2 className="w-3 h-3 text-green-400" />
+          ) : (
+            <Sparkles className="w-3 h-3 text-primary animate-pulse" />
+          )}
+        </div>
+        <span className="text-xs font-semibold">
+          {isBuildComplete ? 'Build Complete' : 'Building Game…'}
+        </span>
+        {!isBuildComplete && (
+          <span className="ml-auto flex gap-0.5">
+            {[0,1,2].map(i => (
+              <span key={i} className="w-1 h-1 rounded-full bg-primary animate-bounce"
+                style={{ animationDelay: `${i * 150}ms` }} />
+            ))}
+          </span>
+        )}
+      </div>
+      <div className="px-3 py-2 space-y-0.5">
+        {steps.map(step => <BuildStep key={step.id} step={step} />)}
+      </div>
+    </div>
+  );
+}
+
+// ─── Simple status bar (for non-build streaming) ──────────────────────────────
 
 function WorkingStatusBar({
   phase,
@@ -56,7 +205,7 @@ function WorkingStatusBar({
     label = `Generating ${parts.join(", ")}…`;
   } else if (phase === "writing") {
     icon  = <PenLine className="w-3 h-3 text-green-400" />;
-    label = "Writing game files…";
+    label = "Writing…";
     if (writingFiles.length > 0) sub = writingFiles[writingFiles.length - 1];
   } else {
     return null;
@@ -64,21 +213,18 @@ function WorkingStatusBar({
 
   return (
     <div className="px-3 py-1.5 border-b border-border bg-card/50 shrink-0 flex items-center gap-2 min-h-0">
-      {/* pulsing dot */}
       <span className="relative flex h-2 w-2 shrink-0">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-60" />
         <span className="relative inline-flex rounded-full h-2 w-2 bg-primary/80" />
       </span>
       {icon}
       <span className="text-[11px] text-muted-foreground">{label}</span>
-      {sub && (
-        <code className="text-[10px] text-primary/60 truncate max-w-[160px] ml-auto">{sub}</code>
-      )}
+      {sub && <code className="text-[10px] text-primary/60 truncate max-w-[160px] ml-auto">{sub}</code>}
     </div>
   );
 }
 
-// ─── Asset generation progress card ──────────────────────────────────────────
+// ─── Asset generation card (used inside the live streaming block) ─────────────
 
 function AssetCard({ asset }: { asset: GeneratingAsset }) {
   const isDone = asset.status === "done";
@@ -92,7 +238,6 @@ function AssetCard({ asset }: { asset: GeneratingAsset }) {
           ? "border-red-500/30 bg-red-500/5"
           : "border-primary/30 bg-primary/5"
     }`}>
-      {/* Thumbnail or spinner */}
       <div className="w-10 h-10 rounded-md overflow-hidden shrink-0 bg-[repeating-conic-gradient(#2a2a3a_0%_25%,#1e1e2e_0%_50%)] bg-[size:6px_6px] flex items-center justify-center">
         {isDone && asset.previewUrl ? (
           <img src={asset.previewUrl} alt={asset.name} className="w-full h-full object-contain" />
@@ -102,16 +247,12 @@ function AssetCard({ asset }: { asset: GeneratingAsset }) {
           <Loader2 className="w-4 h-4 text-primary animate-spin" />
         )}
       </div>
-
-      {/* Info */}
       <div className="flex-1 min-w-0">
         <div className="text-xs font-semibold truncate">{asset.name.replace(/_/g, " ")}</div>
         <div className="text-[10px] text-muted-foreground truncate">
           {isDone ? asset.filename : isError ? (asset.error || "Failed") : `Generating ${asset.assetType}…`}
         </div>
       </div>
-
-      {/* Status icon */}
       <div className="shrink-0">
         {isDone ? (
           <CheckCircle2 className="w-4 h-4 text-green-400" />
@@ -131,56 +272,31 @@ function AssetGenerationBlock({ assets }: { assets: GeneratingAsset[] }) {
   const allDone = doneCount === total;
 
   return (
-    <div className="mt-2 rounded-xl border border-primary/30 bg-primary/5 overflow-hidden">
-      {/* Header */}
+    <div className="mt-1 rounded-xl border border-primary/30 bg-primary/5 overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-primary/20">
         <div className="w-5 h-5 rounded-md bg-primary/20 flex items-center justify-center">
-          {allDone ? (
-            <CheckCircle2 className="w-3 h-3 text-green-400" />
-          ) : (
-            <Sparkles className="w-3 h-3 text-primary animate-pulse" />
-          )}
+          {allDone
+            ? <CheckCircle2 className="w-3 h-3 text-green-400" />
+            : <Sparkles className="w-3 h-3 text-primary animate-pulse" />}
         </div>
         <span className="text-xs font-semibold">
           {allDone ? "Assets Generated" : "Generating Assets"}
         </span>
-        <span className="ml-auto text-[10px] text-muted-foreground">
-          {doneCount}/{total}
-        </span>
+        <span className="ml-auto text-[10px] text-muted-foreground">{doneCount}/{total}</span>
       </div>
-
-      {/* Asset list */}
       <div className="p-2 space-y-1.5">
-        {assets.map(asset => (
-          <AssetCard key={asset.index} asset={asset} />
-        ))}
+        {assets.map(asset => <AssetCard key={asset.index} asset={asset} />)}
       </div>
-
-      {allDone && (
-        <div className="px-3 py-2 border-t border-primary/20">
-          <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-            <Wand2 className="w-3 h-3 text-primary" />
-            Writing game code with these assets…
-          </p>
-        </div>
-      )}
     </div>
   );
 }
 
-// ─── Audio generation progress card ──────────────────────────────────────────
-
-const AUDIO_TYPE_ICONS: Record<string, typeof Music2> = {
-  music: Music2,
-  sfx: Volume2,
-  ambient: Volume2,
-  ui: Volume2,
-};
+// ─── Audio card ───────────────────────────────────────────────────────────────
 
 function AudioCard({ audio }: { audio: GeneratingAudio }) {
   const isDone = audio.status === "done";
   const isError = audio.status === "error";
-  const Icon = AUDIO_TYPE_ICONS[audio.audioType] || Volume2;
+  const Icon = audio.audioType === "music" ? Music2 : Volume2;
 
   return (
     <div className={`flex items-center gap-2 p-2 rounded-lg border transition-all ${
@@ -190,14 +306,12 @@ function AudioCard({ audio }: { audio: GeneratingAudio }) {
           ? "border-red-500/30 bg-red-500/5"
           : "border-violet-400/30 bg-violet-400/5"
     }`}>
-      <div className={`w-10 h-10 rounded-md bg-violet-500/15 flex items-center justify-center shrink-0`}>
-        {isDone ? (
-          <CheckCircle2 className="w-4 h-4 text-violet-400" />
-        ) : isError ? (
-          <AlertCircle className="w-4 h-4 text-red-400" />
-        ) : (
-          <Icon className={`w-4 h-4 text-violet-400 animate-pulse`} />
-        )}
+      <div className="w-10 h-10 rounded-md bg-violet-500/15 flex items-center justify-center shrink-0">
+        {isDone
+          ? <CheckCircle2 className="w-4 h-4 text-violet-400" />
+          : isError
+            ? <AlertCircle className="w-4 h-4 text-red-400" />
+            : <Icon className="w-4 h-4 text-violet-400 animate-pulse" />}
       </div>
       <div className="flex-1 min-w-0">
         <div className="text-xs font-semibold truncate">{audio.name.replace(/_/g, " ")}</div>
@@ -209,11 +323,7 @@ function AudioCard({ audio }: { audio: GeneratingAudio }) {
               : `Generating ${audio.audioType}…`}
         </div>
       </div>
-      <div className="shrink-0">
-        {!isDone && !isError && (
-          <Loader2 className="w-3 h-3 text-violet-400 animate-spin" />
-        )}
-      </div>
+      {!isDone && !isError && <Loader2 className="w-3 h-3 text-violet-400 animate-spin shrink-0" />}
     </div>
   );
 }
@@ -224,14 +334,12 @@ function AudioGenerationBlock({ audio }: { audio: GeneratingAudio[] }) {
   const allDone = doneCount === total;
 
   return (
-    <div className="mt-2 rounded-xl border border-violet-500/30 bg-violet-500/5 overflow-hidden">
+    <div className="mt-1 rounded-xl border border-violet-500/30 bg-violet-500/5 overflow-hidden">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-violet-500/20">
         <div className="w-5 h-5 rounded-md bg-violet-500/20 flex items-center justify-center">
-          {allDone ? (
-            <CheckCircle2 className="w-3 h-3 text-violet-400" />
-          ) : (
-            <Music2 className="w-3 h-3 text-violet-400 animate-pulse" />
-          )}
+          {allDone
+            ? <CheckCircle2 className="w-3 h-3 text-violet-400" />
+            : <Music2 className="w-3 h-3 text-violet-400 animate-pulse" />}
         </div>
         <span className="text-xs font-semibold">
           {allDone ? "Audio Generated" : "Generating Audio"}
@@ -250,7 +358,22 @@ function AudioGenerationBlock({ audio }: { audio: GeneratingAudio[] }) {
 export function AiChatPanel({ projectId }: { projectId: string }) {
   const { data: history } = useGetAiHistory(projectId);
   const clearHistory = useClearAiHistory();
-  const { sendMessage, stopStreaming, streamingMessage, thinking, isStreaming, phase, generatingAssets, generatingAudio } = useAiChatStream(projectId);
+  const { refreshPreview } = useIde();
+
+  const {
+    sendMessage,
+    stopStreaming,
+    streamingMessage,
+    thinking,
+    isStreaming,
+    phase,
+    generatingAssets,
+    generatingAudio,
+    isBuildWorkflow,
+    isBuildComplete,
+    filesWritten,
+  } = useAiChatStream(projectId, refreshPreview);
+
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const isUserScrolledUp = useRef(false);
@@ -301,8 +424,8 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
         </Button>
       </div>
 
-      {/* Live working status bar */}
-      {isStreaming && (
+      {/* Simple status bar — only for non-build streaming (thinking/plain writing) */}
+      {isStreaming && !isBuildWorkflow && (
         <WorkingStatusBar
           phase={phase}
           generatingAssets={generatingAssets}
@@ -404,18 +527,29 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
                 </Collapsible>
               )}
 
-              {/* Asset generation progress */}
-              {generatingAssets.length > 0 && (
-                <div className="w-full max-w-[360px]">
-                  <AssetGenerationBlock assets={generatingAssets} />
-                </div>
-              )}
-
-              {/* Audio generation progress */}
-              {generatingAudio.length > 0 && (
-                <div className="w-full max-w-[360px]">
-                  <AudioGenerationBlock audio={generatingAudio} />
-                </div>
+              {/* Build progress tracker (replaces individual asset/audio blocks during game builds) */}
+              {isBuildWorkflow ? (
+                <BuildProgressTracker
+                  phase={phase}
+                  generatingAssets={generatingAssets}
+                  generatingAudio={generatingAudio}
+                  isBuildComplete={isBuildComplete}
+                  filesWritten={filesWritten}
+                  writingFiles={writingFiles}
+                />
+              ) : (
+                <>
+                  {generatingAssets.length > 0 && (
+                    <div className="w-full max-w-[360px]">
+                      <AssetGenerationBlock assets={generatingAssets} />
+                    </div>
+                  )}
+                  {generatingAudio.length > 0 && (
+                    <div className="w-full max-w-[360px]">
+                      <AudioGenerationBlock audio={generatingAudio} />
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Streamed text response */}
@@ -427,8 +561,8 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
                 </div>
               )}
 
-              {/* File write indicators */}
-              {writingFiles.length > 0 && (
+              {/* File write indicators (non-build) */}
+              {!isBuildWorkflow && writingFiles.length > 0 && (
                 <div className="flex flex-col gap-1 mt-0.5">
                   {writingFiles.map(f => (
                     <div key={f} className="flex items-center gap-1.5 text-[11px] text-muted-foreground px-1">
@@ -445,7 +579,7 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
 
       {/* Input area */}
       <div className="p-3 border-t border-border bg-card">
-        {/* Prompt hint */}
+        {/* Prompt hints */}
         <div className="flex flex-wrap gap-1.5 mb-2">
           {[
             "Build a coffee shop simulator",
@@ -498,10 +632,10 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
           )}
         </div>
 
-        {isStreaming && (generatingAssets.length > 0 || generatingAudio.length > 0) && (
+        {isStreaming && isBuildWorkflow && (
           <p className="text-[10px] text-muted-foreground text-center mt-1.5 flex items-center justify-center gap-1">
-            {generatingAudio.length > 0 ? <Music2 className="w-3 h-3" /> : <ImageIcon className="w-3 h-3" />}
-            Generating {generatingAudio.length > 0 ? "audio" : "assets"} — this may take 30–60 seconds
+            <Sparkles className="w-3 h-3" />
+            Building your game — this may take 60–90 seconds
           </p>
         )}
       </div>

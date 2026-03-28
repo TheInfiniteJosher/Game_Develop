@@ -33,17 +33,28 @@ export interface GeneratingAudio {
 
 export type AiPhase =
   | 'idle'
-  | 'thinking'       // initial reasoning before any output
-  | 'generating'     // generating assets / audio
-  | 'writing'        // writing game files (code output)
+  | 'thinking'
+  | 'generating'
+  | 'writing'
+  | 'complete'
 
-export function useAiChatStream(projectId: string) {
+export interface BuildStep {
+  id: string;
+  label: string;
+  status: 'pending' | 'active' | 'done' | 'skipped';
+  detail?: string;
+}
+
+export function useAiChatStream(projectId: string, onGameReady?: () => void) {
   const [streamingMessage, setStreamingMessage] = useState('');
   const [thinking, setThinking] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [phase, setPhase] = useState<AiPhase>('idle');
   const [generatingAssets, setGeneratingAssets] = useState<GeneratingAsset[]>([]);
   const [generatingAudio, setGeneratingAudio] = useState<GeneratingAudio[]>([]);
+  const [isBuildWorkflow, setIsBuildWorkflow] = useState(false);
+  const [isBuildComplete, setIsBuildComplete] = useState(false);
+  const [filesWritten, setFilesWritten] = useState(0);
   const queryClient = useQueryClient();
   const abortRef = useRef<AbortController | null>(null);
 
@@ -52,7 +63,6 @@ export function useAiChatStream(projectId: string) {
   }, []);
 
   const sendMessage = useCallback(async (message: string, contextFiles?: string[]) => {
-    // Cancel any in-flight request
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -63,6 +73,9 @@ export function useAiChatStream(projectId: string) {
     setThinking('');
     setGeneratingAssets([]);
     setGeneratingAudio([]);
+    setIsBuildWorkflow(false);
+    setIsBuildComplete(false);
+    setFilesWritten(0);
 
     try {
       const res = await fetch(`/api/projects/${projectId}/ai/chat`, {
@@ -102,7 +115,6 @@ export function useAiChatStream(projectId: string) {
                 setPhase('thinking');
               } else if (data.type === 'thinking_done') {
                 setThinking('');
-                // phase stays 'thinking' until we know what comes next
               } else if (data.type === 'delta') {
                 setStreamingMessage(prev => prev + data.content);
                 setPhase('writing');
@@ -110,6 +122,7 @@ export function useAiChatStream(projectId: string) {
               } else if (data.type === 'assets_start') {
                 setGeneratingAssets([]);
                 setGeneratingAudio([]);
+                setIsBuildWorkflow(true);
                 setPhase('generating');
 
               } else if (data.type === 'asset_generating') {
@@ -154,6 +167,7 @@ export function useAiChatStream(projectId: string) {
                 );
 
               } else if (data.type === 'audio_generating') {
+                setIsBuildWorkflow(true);
                 setGeneratingAudio(prev => [
                   ...prev.filter(a => a.index !== data.index),
                   {
@@ -198,12 +212,20 @@ export function useAiChatStream(projectId: string) {
               } else if (data.type === 'change') {
                 queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/files`] });
 
+              } else if (data.type === 'game_ready') {
+                setFilesWritten(data.filesWritten || 0);
+                setIsBuildComplete(true);
+                setPhase('complete');
+                onGameReady?.();
+                queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/files`] });
+
               } else if (data.type === 'assets_saved') {
                 queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/assets`] });
 
               } else if (data.type === 'done') {
                 queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/ai/history`] });
                 queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/changes`] });
+                queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/files`] });
               }
             } catch {
               // Ignore parse errors for incomplete chunks
@@ -212,15 +234,27 @@ export function useAiChatStream(projectId: string) {
         }
       }
     } catch (error: unknown) {
-      // Ignore abort errors — user intentionally stopped
       if (error instanceof Error && error.name === 'AbortError') return;
       console.error('Chat error', error);
     } finally {
       setIsStreaming(false);
       setPhase('idle');
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/ai/history`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/files`] });
     }
-  }, [projectId, queryClient]);
+  }, [projectId, queryClient, onGameReady]);
 
-  return { sendMessage, stopStreaming, streamingMessage, thinking, isStreaming, phase, generatingAssets, generatingAudio };
+  return {
+    sendMessage,
+    stopStreaming,
+    streamingMessage,
+    thinking,
+    isStreaming,
+    phase,
+    generatingAssets,
+    generatingAudio,
+    isBuildWorkflow,
+    isBuildComplete,
+    filesWritten,
+  };
 }
