@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import {
   Sparkles, RefreshCw, Copy, Trash2, Wand2, ChevronDown, ChevronUp,
   Pencil, Check, X, Download, Upload, Music2, Volume2, Play, Pause, Radio,
+  Clapperboard, Loader2,
 } from "lucide-react";
 import { useRenameFile } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
@@ -148,6 +149,18 @@ function AudioTypeIcon({ type }: { type: string }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
+const ANIM_TYPES = [
+  { value: "idle", label: "Idle" },
+  { value: "walk", label: "Walk" },
+  { value: "run", label: "Run" },
+  { value: "attack", label: "Attack" },
+  { value: "jump", label: "Jump" },
+  { value: "death", label: "Death" },
+  { value: "hurt", label: "Hurt" },
+  { value: "cast", label: "Cast" },
+];
+const ANIM_FRAMES = [4, 6, 8, 12];
+
 export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) {
   const [assets, setAssets] = useState<GeneratedAsset[]>([]);
   const [audioAssets, setAudioAssets] = useState<AudioAsset[]>([]);
@@ -161,6 +174,13 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
   const [uploadError, setUploadError] = useState("");
   const uploadRef = useRef<HTMLInputElement>(null);
   const renameFile = useRenameFile();
+
+  // Animation cycle generation state
+  const [showAnimForm, setShowAnimForm] = useState(false);
+  const [animType, setAnimType] = useState("walk");
+  const [animFrames, setAnimFrames] = useState(8);
+  const [animating, setAnimating] = useState(false);
+  const [animError, setAnimError] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -221,6 +241,35 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
     navigator.clipboard.writeText(getCodeSnippet(asset));
     setCopiedSnippet(true);
     setTimeout(() => setCopiedSnippet(false), 2000);
+  };
+
+  const handleGenerateAnimation = async (asset: GeneratedAsset) => {
+    setAnimating(true);
+    setAnimError("");
+    const baseName = (asset.metadata?.prompt || asset.filename.replace(/[_\-]/g, " ").replace(/\.[^.]+$/, "")).slice(0, 60);
+    const style = asset.metadata?.style || "pixel";
+    const prompt = `${baseName}, ${animType} animation cycle`;
+    try {
+      const res = await fetch(`/api/projects/${projectId}/assets/generate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt,
+          style,
+          assetType: "animation",
+          frameCount: animFrames,
+          aspectRatio: "1:1",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Generation failed");
+      setShowAnimForm(false);
+      await load();
+    } catch (err) {
+      setAnimError(err instanceof Error ? err.message : "Generation failed");
+    } finally {
+      setAnimating(false);
+    }
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -335,8 +384,11 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
                       : "border-border hover:border-border/80"
                   }`}
                   onClick={() => {
-                    setSelectedAsset(selectedAsset?.path === asset.path ? null : asset);
+                    const next = selectedAsset?.path === asset.path ? null : asset;
+                    setSelectedAsset(next);
                     setShowSnippet(false);
+                    setShowAnimForm(false);
+                    setAnimError("");
                   }}
                 >
                   {/* Thumbnail */}
@@ -344,7 +396,7 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
                     <img src={asset.previewUrl} alt={asset.filename} className="w-full h-full object-contain" loading="lazy" />
 
                     {/* Hover action bar */}
-                    <div className="absolute inset-0 bg-background/75 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                    <div className="absolute inset-0 bg-background/75 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 flex-wrap p-1">
                       <button
                         onClick={e => { e.stopPropagation(); copyPath(asset.path); }}
                         className="p-1.5 rounded bg-card border border-border hover:border-primary/50 hover:text-primary transition-colors"
@@ -359,6 +411,21 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
                       >
                         <Download className="w-3 h-3" />
                       </button>
+                      {["sprite","enemy","item","vfx"].includes(asset.assetType) && (
+                        <button
+                          onClick={e => {
+                            e.stopPropagation();
+                            setSelectedAsset(asset);
+                            setShowAnimForm(true);
+                            setShowSnippet(false);
+                            setAnimError("");
+                          }}
+                          className="p-1.5 rounded bg-card border border-border hover:border-amber-500/50 hover:text-amber-400 transition-colors"
+                          title="Generate animation cycle"
+                        >
+                          <Clapperboard className="w-3 h-3" />
+                        </button>
+                      )}
                       <button
                         onClick={e => { e.stopPropagation(); setRenamingPath(asset.path); }}
                         className="p-1.5 rounded bg-card border border-border hover:border-primary/50 hover:text-primary transition-colors"
@@ -480,8 +547,20 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
               >
                 <Download className="w-3 h-3" />
               </button>
+              {["sprite","enemy","item","vfx"].includes(selectedAsset.assetType) && (
+                <button
+                  onClick={() => { setShowAnimForm(v => !v); setShowSnippet(false); setAnimError(""); }}
+                  className={`flex items-center justify-center gap-1 text-[10px] py-1 px-2 rounded border transition-colors ${
+                    showAnimForm ? "border-amber-500/60 bg-amber-500/15 text-amber-300" : "border-border bg-muted/30 hover:border-amber-500/40 hover:text-amber-400"
+                  }`}
+                  title="Generate animation cycle"
+                >
+                  <Clapperboard className="w-3 h-3" />
+                  Animate
+                </button>
+              )}
               <button
-                onClick={() => setShowSnippet(v => !v)}
+                onClick={() => { setShowSnippet(v => !v); setShowAnimForm(false); }}
                 className={`flex-1 flex items-center justify-center gap-1 text-[10px] py-1 rounded border transition-colors ${
                   showSnippet ? "border-primary/50 bg-primary/10 text-primary" : "border-border bg-muted/30 hover:bg-muted/60"
                 }`}
@@ -491,6 +570,67 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
                 {showSnippet ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
               </button>
             </div>
+
+            {/* Animation cycle form */}
+            {showAnimForm && (
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-2.5 space-y-2">
+                <div className="flex items-center gap-1.5 text-[10px] font-semibold text-amber-300">
+                  <Clapperboard className="w-3.5 h-3.5" />
+                  Generate Animation Cycle
+                </div>
+                <div className="space-y-1.5">
+                  <div className="text-[10px] text-muted-foreground">Animation type</div>
+                  <div className="flex flex-wrap gap-1">
+                    {ANIM_TYPES.map(t => (
+                      <button
+                        key={t.value}
+                        onClick={() => setAnimType(t.value)}
+                        className={`px-1.5 py-0.5 rounded text-[10px] border transition-all ${
+                          animType === t.value
+                            ? "border-amber-500/60 bg-amber-500/20 text-amber-300"
+                            : "border-border/50 bg-muted/20 text-muted-foreground hover:border-border"
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="space-y-1.5">
+                  <div className="text-[10px] text-muted-foreground">Frames</div>
+                  <div className="flex gap-1">
+                    {ANIM_FRAMES.map(f => (
+                      <button
+                        key={f}
+                        onClick={() => setAnimFrames(f)}
+                        className={`flex-1 py-0.5 rounded text-[10px] border transition-all text-center ${
+                          animFrames === f
+                            ? "border-amber-500/60 bg-amber-500/20 text-amber-300"
+                            : "border-border/50 bg-muted/20 text-muted-foreground hover:border-border"
+                        }`}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {animError && (
+                  <div className="text-[10px] text-red-400 bg-red-400/10 border border-red-400/20 rounded p-1.5">{animError}</div>
+                )}
+                <button
+                  onClick={() => handleGenerateAnimation(selectedAsset)}
+                  disabled={animating}
+                  className="w-full flex items-center justify-center gap-1.5 h-8 rounded-lg text-[11px] font-semibold text-white transition-all disabled:opacity-50"
+                  style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}
+                >
+                  {animating ? (
+                    <><Loader2 className="w-3 h-3 animate-spin" />Generating… (15–30s)</>
+                  ) : (
+                    <><Clapperboard className="w-3 h-3" />Generate {animFrames}-frame {animType} cycle</>
+                  )}
+                </button>
+              </div>
+            )}
 
             {showSnippet && (
               <div className="relative">
