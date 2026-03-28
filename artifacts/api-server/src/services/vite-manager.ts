@@ -137,12 +137,50 @@ export async function buildViteProject(projectId: string): Promise<void> {
       addLog,
     );
 
+    // Post-process built JS: expose the Phaser.Game instance on window so the
+    // scene-detection script can find it even in minified ESM bundles.
+    // Replaces: new X.Game(cfg)  →  window.__phaserGame=new X.Game(cfg)
+    await patchPhaserGameExport(distDir, addLog);
+
     state.status = "ready";
     addLog("✅ Build complete! Preview is ready.");
   } catch (err) {
     state.status = "error";
     state.error = String(err);
     addLog(`❌ Build failed: ${String(err)}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Post-build patching
+// ---------------------------------------------------------------------------
+
+// Scan the built JS assets for the Phaser.Game constructor call and prefix it
+// with a window assignment so the scene-detection script can locate the game
+// instance even in fully-minified ESM bundles where the variable is local.
+// Pattern matched: new X.Game(...)  →  window.__phaserGame=new X.Game(...)
+async function patchPhaserGameExport(distDir: string, addLog: (line: string) => void): Promise<void> {
+  try {
+    const assetsDir = path.join(distDir, "assets");
+    const files = await fs.readdir(assetsDir).catch(() => [] as string[]);
+    const jsFiles = files.filter((f) => f.endsWith(".js"));
+
+    for (const jsFile of jsFiles) {
+      const filePath = path.join(assetsDir, jsFile);
+      const content = await fs.readFile(filePath, "utf-8");
+      // Match the Phaser.Game constructor (any minified variable name)
+      // e.g.  new j.Game(cfg)  or  new Phaser.Game(config)
+      const patched = content.replace(
+        /\bnew ([A-Za-z$_][A-Za-z0-9$_]*)\.Game\(/g,
+        "window.__phaserGame=new $1.Game(",
+      );
+      if (patched !== content) {
+        await fs.writeFile(filePath, patched, "utf-8");
+        addLog("🎮 Patched bundle for scene detection.");
+      }
+    }
+  } catch {
+    // Non-fatal – scene detection just won't work if patching fails
   }
 }
 

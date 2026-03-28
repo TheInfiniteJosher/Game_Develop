@@ -100,24 +100,10 @@ const CONSOLE_INJECT_SCRIPT = `<script>
 })();
 </script>`;
 
-// Inject a tiny module script that re-imports the main bundle (cached, no re-execution)
-// and exposes its default export (the Phaser.Game instance) as window.__phaserGame.
-// This is necessary for ESM/Vite projects where the game is stored as a module export,
-// not a window property.
-function buildModuleTrackerScript(html: string): string {
-  const match = html.match(/<script\s[^>]*type=["']module["'][^>]*src=["']([^"']+)["'][^>]*>/i)
-    ?? html.match(/<script\s[^>]*src=["']([^"']+)["'][^>]*type=["']module["'][^>]*>/i);
-  if (!match) return "";
-  const src = match[1];
-  return `\n<script type="module">import("${src}").then(function(m){try{var g=m&&m.default;if(g&&g.scene&&typeof g.scene.getScenes==='function')window.__phaserGame=g;}catch(e){}});</script>`;
-}
-
 function injectConsoleScript(html: string): string {
-  const tracker = buildModuleTrackerScript(html);
-  const withTracker = tracker ? html.replace("</body>", tracker + "\n</body>") : html;
-  if (withTracker.includes("<head>")) return withTracker.replace("<head>", "<head>" + CONSOLE_INJECT_SCRIPT);
-  if (withTracker.includes("<html")) return withTracker.replace(/<html[^>]*>/, (m) => m + CONSOLE_INJECT_SCRIPT);
-  return CONSOLE_INJECT_SCRIPT + withTracker;
+  if (html.includes("<head>")) return html.replace("<head>", "<head>" + CONSOLE_INJECT_SCRIPT);
+  if (html.includes("<html")) return html.replace(/<html[^>]*>/, (m) => m + CONSOLE_INJECT_SCRIPT);
+  return CONSOLE_INJECT_SCRIPT + html;
 }
 
 // Build status HTML page shown while vite is compiling or has errored
