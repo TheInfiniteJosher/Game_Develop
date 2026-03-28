@@ -66,9 +66,22 @@ function injectConsoleScript(html: string): string {
 }
 
 // Build status HTML page shown while vite is compiling or has errored
-function buildingPage(status: string, logs: string[]): string {
+function buildingPage(status: string, logs: string[], startedAt?: number): string {
   const isError = status === "error";
-  const logText = logs.slice(-40).join("\n");
+  const isInstalling = status === "installing";
+  const logText = logs.slice(-50).join("\n");
+  const startMs = startedAt ?? Date.now();
+
+  const stepsHtml = !isError ? `
+    <div class="steps">
+      <div class="step ${isInstalling ? "active" : "done"}">
+        <span class="dot"></span>1. Installing dependencies
+      </div>
+      <div class="step ${!isInstalling ? "active" : ""}">
+        <span class="dot"></span>2. Building with Vite
+      </div>
+    </div>` : "";
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -76,17 +89,37 @@ function buildingPage(status: string, logs: string[]): string {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${isError ? "Build Failed" : "Building Preview…"}</title>
   <style>
-    body { margin: 0; background: #0d1117; color: #c9d1d9; font-family: monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; box-sizing: border-box; }
-    h2 { color: ${isError ? "#f85149" : "#58a6ff"}; margin-bottom: 12px; }
-    pre { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px; width: 100%; max-width: 700px; overflow: auto; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 60vh; }
-    .spinner { border: 3px solid #30363d; border-top-color: #58a6ff; border-radius: 50%; width: 32px; height: 32px; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
+    body { margin: 0; background: #0d1117; color: #c9d1d9; font-family: monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; box-sizing: border-box; gap: 12px; }
+    h2 { color: ${isError ? "#f85149" : "#58a6ff"}; margin: 0; }
+    .timer { color: #8b949e; font-size: 13px; }
+    .steps { display: flex; flex-direction: column; gap: 6px; width: 100%; max-width: 700px; }
+    .step { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #8b949e; }
+    .step.active { color: #58a6ff; }
+    .step.done { color: #3fb950; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+    .step.active .dot { animation: pulse 1s ease-in-out infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    pre { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 16px; width: 100%; max-width: 700px; overflow: auto; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 55vh; margin: 0; }
+    .spinner { border: 3px solid #30363d; border-top-color: #58a6ff; border-radius: 50%; width: 28px; height: 28px; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
-  ${!isError ? `<script>setTimeout(()=>location.reload(),2500)</script>` : ""}
+  ${!isError ? `<script>
+    var startMs = ${startMs};
+    function tick() {
+      var s = Math.floor((Date.now() - startMs) / 1000);
+      var el = document.getElementById('elapsed');
+      if (el) el.textContent = s + 's elapsed';
+    }
+    tick();
+    setInterval(tick, 1000);
+    setTimeout(function(){ location.reload(); }, 1500);
+  </script>` : ""}
 </head>
 <body>
   ${isError ? "" : `<div class="spinner"></div>`}
   <h2>${isError ? "❌ Build Failed" : "🔨 Building preview…"}</h2>
+  ${!isError ? `<div class="timer" id="elapsed">0s elapsed</div>` : ""}
+  ${stepsHtml}
   <pre>${logText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
 </body>
 </html>`;
@@ -110,12 +143,12 @@ app.use("/api/preview/:projectId", async (req, res, next) => {
 
   // If this is a Vite project without a completed dist, show build status page
   if (isVite && !hasViteDist) {
-    const { status, logs } = getViteStatus(projectId);
+    const { status, logs, startedAt } = getViteStatus(projectId);
     // If idle (e.g. server restarted), kick off the build automatically
     if (status === "idle") {
       buildViteProject(projectId).catch(() => {});
     }
-    return res.setHeader("Content-Type", "text/html").send(buildingPage(status, logs));
+    return res.setHeader("Content-Type", "text/html").send(buildingPage(status, logs, startedAt));
   }
 
   const serveRoot = hasViteDist ? distRoot : projectRoot;

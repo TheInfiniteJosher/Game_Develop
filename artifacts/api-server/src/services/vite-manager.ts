@@ -40,6 +40,7 @@ interface ViteState {
   status: ViteStatus;
   logs: string[];
   error?: string;
+  startedAt?: number;
 }
 
 const states = new Map<string, ViteState>();
@@ -63,7 +64,7 @@ export function isViteProject(projectId: string): boolean {
   return hasPackageJson && hasViteConfig;
 }
 
-export function getViteStatus(projectId: string): { status: ViteStatus; logs: string[] } {
+export function getViteStatus(projectId: string): { status: ViteStatus; logs: string[]; startedAt?: number } {
   const state = states.get(projectId);
   if (!state) {
     if (existsSync(path.join(getProjectDistRoot(projectId), "index.html"))) {
@@ -71,7 +72,7 @@ export function getViteStatus(projectId: string): { status: ViteStatus; logs: st
     }
     return { status: "idle", logs: [] };
   }
-  return { status: state.status, logs: [...state.logs] };
+  return { status: state.status, logs: [...state.logs], startedAt: state.startedAt };
 }
 
 // ---------------------------------------------------------------------------
@@ -84,7 +85,7 @@ export async function buildViteProject(projectId: string): Promise<void> {
   const existing = states.get(projectId);
   if (existing?.status === "installing" || existing?.status === "building") return;
 
-  const state: ViteState = { status: "installing", logs: [] };
+  const state: ViteState = { status: "installing", logs: [], startedAt: Date.now() };
   states.set(projectId, state);
 
   const addLog = (line: string) => {
@@ -95,13 +96,24 @@ export async function buildViteProject(projectId: string): Promise<void> {
   try {
     await fs.rm(distDir, { recursive: true, force: true });
 
-    addLog("📦 Running npm install...");
-    await runCommand(
-      "npm",
-      ["install", "--prefer-offline", "--no-audit", "--no-fund"],
-      root,
-      addLog,
-    );
+    // Skip npm install if node_modules already exists and package.json hasn't
+    // changed since the last install (compare mtimes). This makes rebuilds fast.
+    const nodeModulesDir = path.join(root, "node_modules");
+    const nmStat = await fs.stat(nodeModulesDir).catch(() => null);
+    const pkgStat = await fs.stat(path.join(root, "package.json")).catch(() => null);
+    const needsInstall = !nmStat || !pkgStat || pkgStat.mtimeMs > nmStat.mtimeMs;
+
+    if (needsInstall) {
+      addLog("📦 Running npm install...");
+      await runCommand(
+        "npm",
+        ["install", "--prefer-offline", "--no-audit", "--no-fund"],
+        root,
+        addLog,
+      );
+    } else {
+      addLog("📦 Dependencies up to date, skipping npm install.");
+    }
 
     // Symlink the server's vite into the user's node_modules so that when vite
     // compiles vite.config.js into a temp ESM file and that file does

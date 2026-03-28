@@ -10,6 +10,7 @@ interface ViteInfo {
   isViteProject: boolean;
   status: ViteStatus;
   logs: string[];
+  startedAt?: number;
 }
 
 function useViteStatus(projectId: string, initialData: ViteInfo | null) {
@@ -35,7 +36,7 @@ function useViteStatus(projectId: string, initialData: ViteInfo | null) {
     await fetchStatus();
   }, [projectId, fetchStatus]);
 
-  // Poll while building
+  // Poll while building (every 1s for responsive progress)
   useEffect(() => {
     if (!viteInfo?.isViteProject) return;
     if (viteInfo.status === "ready" || viteInfo.status === "idle" || viteInfo.status === "error") {
@@ -45,9 +46,8 @@ function useViteStatus(projectId: string, initialData: ViteInfo | null) {
       }
       return;
     }
-    // Status is installing or building — poll
     if (!pollRef.current) {
-      pollRef.current = setInterval(fetchStatus, 2000);
+      pollRef.current = setInterval(fetchStatus, 1000);
     }
     return () => {
       if (pollRef.current) {
@@ -65,6 +65,18 @@ function useViteStatus(projectId: string, initialData: ViteInfo | null) {
   return { viteInfo, fetchStatus, triggerBuild };
 }
 
+function useElapsedSeconds(startedAt: number | undefined, active: boolean): number {
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    if (!active || !startedAt) { setElapsed(0); return; }
+    const update = () => setElapsed(Math.floor((Date.now() - startedAt) / 1000));
+    update();
+    const id = setInterval(update, 1000);
+    return () => clearInterval(id);
+  }, [startedAt, active]);
+  return elapsed;
+}
+
 export function PreviewPanel({ projectId }: { projectId: string }) {
   const { data } = useGetPreviewEntry(projectId);
   const { previewRefreshKey, refreshPreview } = useIde();
@@ -75,6 +87,7 @@ export function PreviewPanel({ projectId }: { projectId: string }) {
     isViteProject?: boolean;
     viteStatus?: ViteStatus;
     viteLogs?: string[];
+    viteStartedAt?: number;
   }) | undefined;
 
   const initialViteInfo: ViteInfo | null = anyData
@@ -82,31 +95,30 @@ export function PreviewPanel({ projectId }: { projectId: string }) {
         isViteProject: anyData.isViteProject ?? false,
         status: anyData.viteStatus ?? "idle",
         logs: anyData.viteLogs ?? [],
+        startedAt: anyData.viteStartedAt,
       }
     : null;
 
   const { viteInfo, fetchStatus, triggerBuild } = useViteStatus(projectId, initialViteInfo);
 
+  const isVite = viteInfo?.isViteProject ?? false;
+  const viteStatus = viteInfo?.status ?? "idle";
+  const viteLogs = viteInfo?.logs ?? [];
+  const isBuilding = viteStatus === "installing" || viteStatus === "building";
+  const elapsed = useElapsedSeconds(viteInfo?.startedAt, isBuilding);
+
   // Kick off polling as soon as we know it's a Vite project that's still building
   useEffect(() => {
-    if (
-      viteInfo?.isViteProject &&
-      (viteInfo.status === "installing" || viteInfo.status === "building")
-    ) {
+    if (isVite && isBuilding) {
       fetchStatus();
     }
-  }, [viteInfo?.isViteProject, viteInfo?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isVite, isBuilding]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Auto-scroll logs
   useEffect(() => {
     logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [viteInfo?.logs]);
 
-  const isVite = viteInfo?.isViteProject ?? false;
-  const viteStatus = viteInfo?.status ?? "idle";
-  const viteLogs = viteInfo?.logs ?? [];
-
-  const isBuilding = viteStatus === "installing" || viteStatus === "building";
   const showIframe = !isVite || viteStatus === "ready";
   const showBuildPanel = isVite && !showIframe;
 
@@ -187,7 +199,24 @@ export function PreviewPanel({ projectId }: { projectId: string }) {
               <span className="text-sm font-medium text-foreground">
                 {viteStatus === "error" ? "Build failed" : isBuilding ? statusLabel[viteStatus] : "Vite project detected"}
               </span>
+              {isBuilding && (
+                <span className="text-xs text-muted-foreground ml-auto">{elapsed}s elapsed</span>
+              )}
             </div>
+
+            {/* Step progress */}
+            {isBuilding && (
+              <div className="flex gap-4 text-xs">
+                <div className={`flex items-center gap-1.5 ${viteStatus === "installing" ? "text-blue-400" : "text-green-400"}`}>
+                  <span className={`w-2 h-2 rounded-full bg-current ${viteStatus === "installing" ? "animate-pulse" : ""}`} />
+                  1. Installing packages
+                </div>
+                <div className={`flex items-center gap-1.5 ${viteStatus === "building" ? "text-blue-400" : "text-muted-foreground"}`}>
+                  <span className={`w-2 h-2 rounded-full bg-current ${viteStatus === "building" ? "animate-pulse" : ""}`} />
+                  2. Building with Vite
+                </div>
+              </div>
+            )}
 
             {viteStatus === "idle" && (
               <div className="text-xs text-muted-foreground">

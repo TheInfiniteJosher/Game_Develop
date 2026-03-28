@@ -335,7 +335,7 @@ router.get("/preview-entry", async (req, res) => {
     const url = `/api/preview/${req.params.id}/${entryFile || "index.html"}`;
 
     const vite = isViteProject(req.params.id);
-    const { status: viteStatus, logs: viteLogs } = getViteStatus(req.params.id);
+    const { status: viteStatus, logs: viteLogs, startedAt: viteStartedAt } = getViteStatus(req.params.id);
 
     res.json({
       entryFile: entryFile || "index.html",
@@ -344,6 +344,7 @@ router.get("/preview-entry", async (req, res) => {
       isViteProject: vite,
       viteStatus,
       viteLogs,
+      viteStartedAt,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get preview entry");
