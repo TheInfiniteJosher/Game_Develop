@@ -281,15 +281,15 @@ export function PreviewPanel({ projectId }: { projectId: string }) {
             <iframe
               key={`${previewRefreshKey}-${viteStatus}`}
               src={data.url}
-              className={`absolute top-0 left-0 right-0 ${activeScene ? "bottom-6" : "bottom-0"} border-0 w-full`}
+              className="absolute inset-0 w-full h-full border-0"
               title="Game Preview"
               sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-popups"
             />
             {activeScene && (
-              <div className="absolute bottom-0 left-0 right-0 h-6 bg-card/95 backdrop-blur-sm border-t border-border flex items-center px-3 gap-2 text-xs z-10 select-none">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0" />
-                <span className="text-muted-foreground">Scene</span>
-                <span className="font-mono text-blue-400 font-medium truncate">{activeScene}</span>
+              <div className="absolute bottom-0 left-0 right-0 h-6 bg-black/65 backdrop-blur-sm flex items-center px-3 gap-2 text-xs z-10 select-none pointer-events-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0 animate-pulse" />
+                <span className="text-white/50 font-medium">Scene</span>
+                <span className="font-mono text-blue-300 font-semibold truncate">{activeScene}</span>
               </div>
             )}
           </>

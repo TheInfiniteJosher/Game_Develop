@@ -57,13 +57,35 @@ const CONSOLE_INJECT_SCRIPT = `<script>
     send('error', ['Unhandled Promise: ' + (e.reason?.message || e.reason)]);
   });
 
-  // Phaser 3 active scene detector — polls every 500ms and reports scene changes
+  // Phaser 3 active scene detector — finds the game by duck-typing and polls every 500ms
   var _lastScene = null;
+  var _foundGame = null;
+  function findPhaserGame() {
+    if (_foundGame) return _foundGame;
+    // Common naming conventions
+    var candidates = [window.game, window.Game, window.phaserGame, window.phaser];
+    for (var i = 0; i < candidates.length; i++) {
+      var c = candidates[i];
+      if (c && c.scene && typeof c.scene.getScenes === 'function') { _foundGame = c; return c; }
+    }
+    // Scan window properties for any Phaser.Game instance (duck-type: has .scene.getScenes)
+    try {
+      var keys = Object.keys(window);
+      for (var j = 0; j < keys.length; j++) {
+        try {
+          var v = window[keys[j]];
+          if (v && typeof v === 'object' && v.scene && typeof v.scene.getScenes === 'function') {
+            _foundGame = v; return v;
+          }
+        } catch(e) {}
+      }
+    } catch(e) {}
+    return null;
+  }
   setInterval(function() {
     try {
-      var game = window.game;
-      if (!game && window.Phaser && window.Phaser.GAMES) game = window.Phaser.GAMES[0];
-      if (!game || !game.scene) return;
+      var game = findPhaserGame();
+      if (!game) return;
       var scenes = game.scene.getScenes(true);
       if (!scenes || !scenes.length) return;
       var key = scenes.map(function(s) { return s.scene && s.scene.key; }).filter(Boolean).join(' + ');
