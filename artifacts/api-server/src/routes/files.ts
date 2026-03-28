@@ -343,6 +343,74 @@ router.post("/changes/:changeId/revert", async (req, res) => {
   }
 });
 
+// Export project as a ZIP download
+// type=source → raw editable files (src/)
+// type=playable → built dist/ (requires a completed Vite build)
+router.get("/export", async (req, res) => {
+  try {
+    const type = (req.query.type as string) || "source";
+    const projectId = req.params.id;
+
+    const [project] = await db
+      .select()
+      .from(projectsTable)
+      .where(eq(projectsTable.id, projectId));
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    const root = getProjectRoot(projectId);
+    const { getProjectDistRoot } = await import("../services/vite-manager.js");
+    const distDir = getProjectDistRoot(projectId);
+
+    let sourceDir: string;
+    let zipName: string;
+
+    if (type === "playable") {
+      if (!existsSync(path.join(distDir, "index.html"))) {
+        return res.status(400).json({ error: "No playable build found. Build the project first." });
+      }
+      sourceDir = distDir;
+      zipName = `${project.name.replace(/[^a-z0-9]+/gi, "-")}-playable.zip`;
+    } else {
+      if (!existsSync(root)) {
+        return res.status(404).json({ error: "Project files not found." });
+      }
+      sourceDir = root;
+      zipName = `${project.name.replace(/[^a-z0-9]+/gi, "-")}-source.zip`;
+    }
+
+    const { default: AdmZip } = await import("adm-zip");
+    const zip = new AdmZip();
+
+    const addDirToZip = async (dirPath: string, zipPath: string) => {
+      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(dirPath, entry.name);
+        const entryZipPath = zipPath ? `${zipPath}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) {
+          // Skip heavy directories for source exports
+          if (type === "source" && (entry.name === "node_modules" || entry.name === "dist" || entry.name === ".git")) continue;
+          await addDirToZip(fullPath, entryZipPath);
+        } else {
+          const content = await fs.readFile(fullPath);
+          zip.addFile(entryZipPath, content);
+        }
+      }
+    };
+
+    await addDirToZip(sourceDir, "");
+    const zipBuffer = zip.toBuffer();
+
+    res
+      .setHeader("Content-Type", "application/zip")
+      .setHeader("Content-Disposition", `attachment; filename="${zipName}"`)
+      .setHeader("Content-Length", zipBuffer.length)
+      .send(zipBuffer);
+  } catch (err) {
+    req.log.error({ err }, "Failed to export project");
+    res.status(500).json({ error: "Export failed" });
+  }
+});
+
 // Get preview entry
 router.get("/preview-entry", async (req, res) => {
   try {

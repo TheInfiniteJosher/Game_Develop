@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import Ide from "@/pages/Ide";
+import Play from "@/pages/Play";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -20,6 +21,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/ide/:projectId" component={Ide} />
+      <Route path="/play/:slug" component={Play} />
       <Route component={NotFound} />
     </Switch>
   );

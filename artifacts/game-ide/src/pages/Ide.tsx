@@ -1,4 +1,4 @@
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useState, useEffect, useRef } from "react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,9 +9,16 @@ import { PreviewPanel } from "@/components/ide/PreviewPanel";
 import { AiChatPanel } from "@/components/ide/AiChatPanel";
 import { ChangesPanel } from "@/components/ide/ChangesPanel";
 import { AssetStudio } from "@/components/ide/AssetStudio";
-import { ChevronLeft, FileCode2, X, Terminal, Palette } from "lucide-react";
-import { useGetProject } from "@/hooks/use-api";
+import { ChevronLeft, FileCode2, X, Terminal, Palette, Download, Globe, GlobeLock, Copy, Check, ChevronDown } from "lucide-react";
+import { useGetProject, usePublishProject, useUnpublishProject } from "@/hooks/use-api";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface ConsoleMessage {
   level: "log" | "error" | "warn";
@@ -24,6 +31,30 @@ function IdeLayout({ projectId }: { projectId: string }) {
   const { openFiles, activeFile, setActiveFile, closeFile } = useIde();
   const [consoleLogs, setConsoleLogs] = useState<ConsoleMessage[]>([]);
   const consoleEndRef = useRef<HTMLDivElement>(null);
+  const [, navigate] = useLocation();
+
+  const { mutate: publish, isPending: publishing } = usePublishProject();
+  const { mutate: unpublish, isPending: unpublishing } = useUnpublishProject();
+  const [copied, setCopied] = useState(false);
+
+  const isPublished = !!(project as any)?.publishedSlug;
+  const publishedSlug = (project as any)?.publishedSlug as string | undefined;
+
+  const playUrl = publishedSlug
+    ? `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, "")}/play/${publishedSlug}`
+    : null;
+
+  const handleCopyUrl = () => {
+    if (!playUrl) return;
+    navigator.clipboard.writeText(playUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
+  const handleExport = (type: "source" | "playable") => {
+    window.location.href = `/api/projects/${projectId}/export?type=${type}`;
+  };
 
   // Listen for postMessage from the preview iframe
   useEffect(() => {
@@ -58,6 +89,84 @@ function IdeLayout({ projectId }: { projectId: string }) {
             <span className="font-semibold text-sm leading-tight">{project?.name || "Loading..."}</span>
             <span className="text-[10px] text-muted-foreground uppercase tracking-widest">AI Game Studio</span>
           </div>
+        </div>
+
+        {/* Right side: Export + Publish controls */}
+        <div className="flex items-center gap-2">
+          {/* Export dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+                <Download className="h-3.5 w-3.5" />
+                Export
+                <ChevronDown className="h-3 w-3 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuItem onClick={() => handleExport("source")}>
+                <FileCode2 className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                <div>
+                  <div className="text-xs font-medium">Source code</div>
+                  <div className="text-[10px] text-muted-foreground">Raw project files (.zip)</div>
+                </div>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleExport("playable")}>
+                <Globe className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                <div>
+                  <div className="text-xs font-medium">Playable build</div>
+                  <div className="text-[10px] text-muted-foreground">Built HTML/JS, runs offline</div>
+                </div>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Publish / Unpublish */}
+          {isPublished ? (
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 text-xs text-green-400 hover:text-green-300 hover:bg-green-400/10"
+                onClick={handleCopyUrl}
+                title={playUrl ?? ""}
+              >
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? "Copied!" : "Copy link"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 gap-1.5 text-xs border-green-600/40 text-green-400 hover:text-green-300 hover:bg-green-400/10"
+                onClick={() => navigate(`/play/${publishedSlug}`)}
+                title="Open published game"
+              >
+                <Globe className="h-3.5 w-3.5" />
+                Live
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-muted-foreground hover:text-red-400"
+                onClick={() => unpublish({ id: projectId })}
+                disabled={unpublishing}
+                title="Unpublish game"
+              >
+                <GlobeLock className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="default"
+              size="sm"
+              className="h-7 gap-1.5 text-xs bg-green-600 hover:bg-green-500 text-white"
+              onClick={() => publish({ id: projectId })}
+              disabled={publishing}
+            >
+              <Globe className="h-3.5 w-3.5" />
+              {publishing ? "Publishing…" : "Publish"}
+            </Button>
+          )}
         </div>
       </header>
 

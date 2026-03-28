@@ -145,6 +145,59 @@ export function useClearAiHistory() {
   });
 }
 
+// usePublishProject — sets publishedSlug + publishedAt on the server
+export function usePublishProject() {
+  const queryClient = useQueryClient();
+  const [isPending, setIsPending] = useState(false);
+
+  const mutate = async (
+    { id }: { id: string },
+    options?: { onSuccess?: (data: unknown) => void; onError?: (err: Error) => void }
+  ) => {
+    setIsPending(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/publish`, { method: "POST" });
+      if (!res.ok) throw new Error("Publish failed");
+      const data = await res.json();
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}`] });
+      options?.onSuccess?.(data);
+    } catch (err) {
+      options?.onError?.(err as Error);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending };
+}
+
+// useUnpublishProject — clears publishedSlug + publishedAt
+export function useUnpublishProject() {
+  const queryClient = useQueryClient();
+  const [isPending, setIsPending] = useState(false);
+
+  const mutate = async (
+    { id }: { id: string },
+    options?: { onSuccess?: () => void; onError?: (err: Error) => void }
+  ) => {
+    setIsPending(true);
+    try {
+      const res = await fetch(`/api/projects/${id}/publish`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Unpublish failed");
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects/${id}`] });
+      options?.onSuccess?.();
+    } catch (err) {
+      options?.onError?.(err as Error);
+    } finally {
+      setIsPending(false);
+    }
+  };
+
+  return { mutate, isPending };
+}
+
 // useUploadZip - manually implemented since it uses multipart form
 export function useUploadZip() {
   const queryClient = useQueryClient();

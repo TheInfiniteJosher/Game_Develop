@@ -8,6 +8,8 @@ export const projectsTable = pgTable("projects", {
   description: text("description"),
   entryFile: text("entry_file"),
   fileCount: integer("file_count").notNull().default(0),
+  publishedSlug: text("published_slug").unique(),
+  publishedAt: timestamp("published_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
