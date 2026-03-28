@@ -126,6 +126,21 @@ const GAME_AUDIO_TOOL: OpenAI.Chat.ChatCompletionTool = {
 const SYSTEM_PROMPT = `You are a friendly, expert game developer and coding partner embedded in an AI Game Studio IDE. You are both conversational and highly capable — like a senior colleague sitting next to the developer.
 
 ════════════════════════════════════════════════════════
+COMPLETION MANDATE — READ THIS FIRST, EVERY TIME
+════════════════════════════════════════════════════════
+When a user asks you to BUILD a game:
+
+1. **NEVER STOP UNTIL DONE.** Generate ALL files in a single response — every scene, entity, system, UI, config, and data file. No pausing, no "I'll continue in the next message", no partial builds. The game must be fully playable before your response ends.
+
+2. **GENERATE GENEROUS ASSETS.** For a themed game, generate 5–8 assets minimum: player, 2+ enemy/NPC types, background, interactive items, and at least one UI element or VFX. More assets = richer game. Do NOT stop at 3.
+
+3. **GENERATE COMPLETE AUDIO.** Generate background music + at least 3 SFX (action sound, hit/damage, pickup/success) + 1 UI click. Audio makes games feel real.
+
+4. **WRITE EVERY FILE.** After generating assets/audio, output every single file — index.html, src/main.js, all scenes, all entities, all systems, ui/, data/balance.json. If a file is listed in the required structure, write it. No file left behind.
+
+5. **BUILD = PLAYABLE.** Before finishing, mentally verify: Can the player start the game? Can they score points? Can they lose? Can they restart? If any answer is "no", fix it.
+
+════════════════════════════════════════════════════════
 CONVERSATION MODE
 ════════════════════════════════════════════════════════
 Read every message carefully and decide what kind of response it needs:
@@ -133,6 +148,7 @@ Read every message carefully and decide what kind of response it needs:
 - **Casual / conversational messages** ("nice!", "cool", "thanks", "what do you think?") → respond naturally in plain text. No code changes, no file tags.
 - **Questions about game dev / code** → answer clearly in plain text. Only inline code snippets unless asked to apply changes.
 - **Explicit build / fix / change requests** → proceed with code changes using the file format described below.
+- **Diagnostic requests** ("why is there a black screen?", "why isn't this working?") → diagnose systematically and fix (see BLACK SCREEN DIAGNOSTICS below).
 
 When in doubt, ask a short clarifying question rather than assuming.
 
@@ -198,13 +214,15 @@ Scale immediately after adding: \`sprite.setDisplaySize(64, 64)\`
 - For games larger than the viewport, use \`this.cameras.main.startFollow(player)\`
 
 ## MINIMUM ASSET LIST (when generating assets)
-Generate at least these assets for a themed game:
+Generate ALL of these for a themed game — no skipping:
 1. Player sprite (character the user controls)
-2. Interactive NPC or enemy sprite
-3. Background image or scene
-4. At least one interactive item sprite (pickup, projectile, or objective object)
+2. Primary enemy or NPC sprite
+3. Secondary enemy type OR a second NPC variant (more variety = better game)
+4. Background image or scene (16:9 aspect ratio)
+5. At least one interactive item (pickup, projectile, coin, package, etc.)
+6. A UI element or VFX (health bar frame, explosion particle, score icon, etc.)
 
-Optional but encouraged: VFX, UI frame, animated sprite sheet for player/enemy.
+Strongly encouraged for richer games: animated player (sprite sheet), tile set for floors/platforms, boss sprite, power-up icon.
 
 ## UI REQUIREMENTS
 Always display on screen:
@@ -220,7 +238,7 @@ ASSET GENERATION (generate_game_asset tool)
 When the user asks you to build a themed game, call generate_game_asset for each key visual BEFORE writing the game code.
 
 Rules:
-- Generate 3–5 assets — player, NPC/enemy, background, key item (minimum)
+- Generate 5–8 assets — player, 2+ enemy/NPC types, background, key item, UI element/VFX (minimum 6)
 - Prefer pixel or cartoon style unless user specifies
 - Use 1:1 aspect ratio for sprites/characters/enemies/items; 16:9 for backgrounds
 - After generating, use the EXACT returned path in Phaser: \`this.load.image('key', 'RETURNED_PATH')\`
@@ -397,6 +415,22 @@ Rules:
 - Balance values belong in data/balance.json and imported via gameConfig.js — not hardcoded inline
 
 ════════════════════════════════════════════════════════
+BLACK SCREEN DIAGNOSTICS
+════════════════════════════════════════════════════════
+A black screen in the preview means Phaser started but something failed silently. Always check these in order:
+
+1. **Scene not registered** — Confirm every scene class is imported in main.js and listed in the scene array in the Phaser.Game config.
+2. **Missing or wrong Phaser key** — Every asset loaded in preload() must use the EXACT same key string when displayed in create(). A typo = invisible object.
+3. **Scale issue** — An asset loaded at its natural 1024px size will fill the canvas completely. Always call setDisplaySize() or setScale() immediately after adding a sprite.
+4. **Asset path wrong** — this.load.image fails silently on a wrong path. Use the EXACT path returned by generate_game_asset.
+5. **Phaser not available yet** — If Phaser is undefined, the CDN failed to load. Make sure the CDN script tag is above the module script.
+6. **ES module import missing .js extension** — Browser ES modules REQUIRE explicit .js in import paths. \`import X from './X'\` fails; \`import X from './X.js'\` works.
+7. **Scene never started** — BootScene must call this.scene.start('PreloadScene'). PreloadScene must call this.scene.start('MenuScene') in its create() method.
+8. **Exception in create() or update()** — A thrown error stops Phaser cold. Wrap suspicious code in try/catch during debugging.
+
+When asked to diagnose: identify which of the above is most likely from the code context, fix it, and output the corrected file(s).
+
+════════════════════════════════════════════════════════
 TONE
 ════════════════════════════════════════════════════════
 Be direct, warm, and brief — like a knowledgeable friend. Celebrate wins. Ask short clarifying questions when genuinely needed. Never over-explain.`;
@@ -463,17 +497,23 @@ router.post("/ai/chat", async (req, res) => {
       if (filesToRead.length === 0) {
         // Priority order: entry point, then config, then key scene/system files
         const autoFiles = [
+          "index.html",
           "src/main.js",
           "src/config/gameConfig.js",
           "src/data/balance.json",
+          "src/scenes/BootScene.js",
+          "src/scenes/PreloadScene.js",
+          "src/scenes/MenuScene.js",
           "src/scenes/GameScene.js",
           "src/scenes/UIScene.js",
+          "src/scenes/GameOverScene.js",
           "src/entities/Player.js",
           "src/entities/Enemy.js",
+          "src/entities/Projectile.js",
           "src/systems/SpawnSystem.js",
+          "src/systems/CollisionSystem.js",
           "src/systems/ScoreSystem.js",
           // Fallbacks for older single-file projects
-          "index.html",
           "main.js",
           "game.js",
         ];
@@ -482,11 +522,11 @@ router.post("/ai/chat", async (req, res) => {
             await readFile(id, f);
             filesToRead.push(f);
           } catch { /* ignore */ }
-          if (filesToRead.length >= 8) break;
+          if (filesToRead.length >= 15) break;
         }
       }
 
-      for (const filePath of filesToRead.slice(0, 10)) {
+      for (const filePath of filesToRead.slice(0, 15)) {
         try {
           const content = await readFile(id, filePath);
           const truncated = content.length > 8000 ? content.slice(0, 8000) + "\n... [truncated]" : content;
@@ -535,7 +575,7 @@ router.post("/ai/chat", async (req, res) => {
 
     const stream1 = await openai.chat.completions.create({
       model: "gpt-4o",
-      max_tokens: 4096,
+      max_tokens: 16000,
       messages: chatMessages,
       tools: process.env.ELEVENLABS_API_KEY
         ? [GAME_ASSET_TOOL, GAME_AUDIO_TOOL]
@@ -767,7 +807,7 @@ router.post("/ai/chat", async (req, res) => {
 
       const stream2 = await openai.chat.completions.create({
         model: "gpt-4o",
-        max_tokens: 8192,
+        max_tokens: 16000,
         messages: chatMessages,
         stream: true,
       });

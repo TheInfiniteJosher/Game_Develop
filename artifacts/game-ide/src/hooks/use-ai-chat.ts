@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
 export interface GeneratingAsset {
@@ -45,8 +45,18 @@ export function useAiChatStream(projectId: string) {
   const [generatingAssets, setGeneratingAssets] = useState<GeneratingAsset[]>([]);
   const [generatingAudio, setGeneratingAudio] = useState<GeneratingAudio[]>([]);
   const queryClient = useQueryClient();
+  const abortRef = useRef<AbortController | null>(null);
+
+  const stopStreaming = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
 
   const sendMessage = useCallback(async (message: string, contextFiles?: string[]) => {
+    // Cancel any in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setIsStreaming(true);
     setPhase('thinking');
     setStreamingMessage('');
@@ -58,7 +68,8 @@ export function useAiChatStream(projectId: string) {
       const res = await fetch(`/api/projects/${projectId}/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, contextFiles })
+        body: JSON.stringify({ message, contextFiles }),
+        signal: controller.signal,
       });
 
       if (!res.ok) throw new Error('Failed to start chat');
@@ -200,7 +211,9 @@ export function useAiChatStream(projectId: string) {
           }
         }
       }
-    } catch (error) {
+    } catch (error: unknown) {
+      // Ignore abort errors — user intentionally stopped
+      if (error instanceof Error && error.name === 'AbortError') return;
       console.error('Chat error', error);
     } finally {
       setIsStreaming(false);
@@ -209,5 +222,5 @@ export function useAiChatStream(projectId: string) {
     }
   }, [projectId, queryClient]);
 
-  return { sendMessage, streamingMessage, thinking, isStreaming, phase, generatingAssets, generatingAudio };
+  return { sendMessage, stopStreaming, streamingMessage, thinking, isStreaming, phase, generatingAssets, generatingAudio };
 }

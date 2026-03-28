@@ -4,7 +4,7 @@ import { useAiChatStream, type AiPhase, type GeneratingAsset, type GeneratingAud
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Send, Trash2, ChevronRight, Bot, User, Loader2, FileCode2,
+  Send, Square, Trash2, ChevronRight, Bot, User, Loader2, FileCode2,
   Sparkles, ImageIcon, CheckCircle2, AlertCircle, Wand2, Music2, Volume2,
   PenLine, Cpu,
 } from "lucide-react";
@@ -250,7 +250,7 @@ function AudioGenerationBlock({ audio }: { audio: GeneratingAudio[] }) {
 export function AiChatPanel({ projectId }: { projectId: string }) {
   const { data: history } = useGetAiHistory(projectId);
   const clearHistory = useClearAiHistory();
-  const { sendMessage, streamingMessage, thinking, isStreaming, phase, generatingAssets, generatingAudio } = useAiChatStream(projectId);
+  const { sendMessage, stopStreaming, streamingMessage, thinking, isStreaming, phase, generatingAssets, generatingAudio } = useAiChatStream(projectId);
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const isUserScrolledUp = useRef(false);
@@ -476,15 +476,26 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
               }
             }}
           />
-          <Button
-            size="icon"
-            className="absolute right-2 bottom-2 h-8 w-8 rounded-lg shadow-md transition-transform active:scale-95"
-            onClick={handleSend}
-            disabled={isStreaming || !input.trim()}
-            style={!isStreaming && input.trim() ? { background: "linear-gradient(135deg, #F97316, #EA580C)" } : undefined}
-          >
-            <Send className="h-4 w-4" />
-          </Button>
+          {isStreaming ? (
+            <Button
+              size="icon"
+              className="absolute right-2 bottom-2 h-8 w-8 rounded-lg shadow-md transition-transform active:scale-95 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              onClick={stopStreaming}
+              title="Stop generation"
+            >
+              <Square className="h-3.5 w-3.5 fill-current" />
+            </Button>
+          ) : (
+            <Button
+              size="icon"
+              className="absolute right-2 bottom-2 h-8 w-8 rounded-lg shadow-md transition-transform active:scale-95"
+              onClick={handleSend}
+              disabled={!input.trim()}
+              style={input.trim() ? { background: "linear-gradient(135deg, #F97316, #EA580C)" } : undefined}
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          )}
         </div>
 
         {isStreaming && (generatingAssets.length > 0 || generatingAudio.length > 0) && (
