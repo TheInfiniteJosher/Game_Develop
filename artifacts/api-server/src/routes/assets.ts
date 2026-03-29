@@ -166,9 +166,8 @@ router.post("/assets/generate", async (req, res) => {
 router.get("/assets", async (req, res) => {
   try {
     const projectRoot = getProjectRoot(req.params.id);
-    const assetsRoot = path.join(projectRoot, "assets");
 
-    if (!existsSync(assetsRoot)) {
+    if (!existsSync(projectRoot)) {
       return res.json([]);
     }
 
@@ -181,8 +180,19 @@ router.get("/assets", async (req, res) => {
       createdAt: string;
       previewUrl: string;
       metadata?: Record<string, unknown>;
+      imported?: boolean;
     }> = [];
 
+    // Directories to skip during full-project scan
+    const SKIP_DIRS = new Set([
+      "node_modules", ".git", "dist", ".vite", "build",
+      "__pycache__", ".cache", "coverage",
+    ]);
+
+    /**
+     * Recursively scan a directory for image files.
+     * relBase is the path relative to projectRoot.
+     */
     async function scanDir(dir: string, relBase: string) {
       let entries: Awaited<ReturnType<typeof fs.readdir>>;
       try {
@@ -194,32 +204,42 @@ router.get("/assets", async (req, res) => {
         const fullPath = path.join(dir, entry.name);
         const relPath = relBase ? `${relBase}/${entry.name}` : entry.name;
         if (entry.isDirectory()) {
-          await scanDir(fullPath, relPath);
-        } else if (/\.(png|jpg|jpeg|gif|webp)$/i.test(entry.name)) {
-          const stat = await fs.stat(fullPath);
-          const metaPath = fullPath.replace(/\.(png|jpg|jpeg|gif|webp)$/i, ".meta.json");
+          if (!SKIP_DIRS.has(entry.name)) {
+            await scanDir(fullPath, relPath);
+          }
+        } else if (/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(entry.name)) {
+          // Skip tiny files (icons, favicons under 500 bytes) to avoid clutter
+          let stat: Awaited<ReturnType<typeof fs.stat>>;
+          try { stat = await fs.stat(fullPath); } catch { continue; }
+          if (stat.size < 500) continue;
+
+          // Read .meta.json sidecar if present (AI-generated assets have this)
+          const metaPath = fullPath.replace(/\.(png|jpg|jpeg|gif|webp|svg)$/i, ".meta.json");
           let metadata: Record<string, unknown> | undefined;
+          let isImported = true;
           if (existsSync(metaPath)) {
             try {
               metadata = JSON.parse(await fs.readFile(metaPath, "utf-8"));
+              isImported = false; // has metadata → AI-generated
             } catch { /* ignore */ }
           }
-          const assetRelPath = `assets/${relPath}`;
+
           assets.push({
-            path: assetRelPath,
+            path: relPath,
             filename: entry.name,
             folder: relBase,
             assetType: (metadata?.assetType as string) || "sprite",
             size: stat.size,
             createdAt: stat.birthtime.toISOString(),
-            previewUrl: `/api/preview/${req.params.id}/${assetRelPath}`,
+            previewUrl: `/api/preview/${req.params.id}/${relPath}`,
             metadata,
+            imported: isImported,
           });
         }
       }
     }
 
-    await scanDir(assetsRoot, "");
+    await scanDir(projectRoot, "");
     assets.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     res.json(assets);
   } catch (err) {

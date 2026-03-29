@@ -734,6 +734,33 @@ router.post("/ai/chat", async (req, res) => {
           } catch { /* ignore */ }
           if (filesToRead.length >= 15) break;
         }
+
+        // ── Fallback for imported / uploaded projects ──────────────────────────
+        // If we found very few files via the predefined list, do a breadth-first
+        // scan of the project root and add the first .js/.html/.json code files we
+        // find. This ensures uploaded games with non-standard layouts still get
+        // their code read into context.
+        if (filesToRead.length < 3 && existsSync(root)) {
+          const { readdirSync } = await import("fs");
+          const SKIP = new Set(["node_modules", ".git", "dist", ".vite", "__pycache__"]);
+          const queue: string[] = [root];
+          const found: string[] = [];
+          while (queue.length > 0 && found.length < 15) {
+            const dir = queue.shift()!;
+            let dirEntries: ReturnType<typeof readdirSync>;
+            try { dirEntries = readdirSync(dir, { withFileTypes: true }); } catch { continue; }
+            for (const e of dirEntries) {
+              if (e.isDirectory()) {
+                if (!SKIP.has(e.name)) queue.push(`${dir}/${e.name}`);
+              } else if (/\.(js|ts|html|json)$/i.test(e.name) && !/\.(meta|min)\./.test(e.name)) {
+                const rel = `${dir}/${e.name}`.replace(`${root}/`, "");
+                if (!filesToRead.includes(rel)) found.push(rel);
+              }
+              if (found.length >= 15) break;
+            }
+          }
+          filesToRead.push(...found.slice(0, 15 - filesToRead.length));
+        }
       }
 
       for (const filePath of filesToRead.slice(0, 15)) {
@@ -777,14 +804,18 @@ router.post("/ai/chat", async (req, res) => {
       chatMessages.push({
         role: "system",
         content: [
-          "EDIT / CONTINUE MODE — OVERRIDE THE TOOLS-FIRST RULE:",
-          "This project already has generated assets and/or game files (see file tree above).",
+          "EDIT MODE — OVERRIDE THE TOOLS-FIRST RULE:",
+          "This project already has existing game files (see file tree and code context above).",
           "DO NOT call generate_game_asset or generate_game_audio.",
-          "DO NOT regenerate any assets — they already exist on disk and are ready to use.",
-          "Your ONLY job is to write or update game code using <file path=\"...\"> blocks.",
-          "If the game is incomplete, write ALL remaining files now in a single response.",
-          "If the user is asking for a fix or change, apply it and output the updated file(s).",
-          "Output ONLY <file path=\"...\"> blocks plus a short closing note. No asset calls.",
+          "DO NOT re-generate assets — they already exist on disk.",
+          "",
+          "How to respond:",
+          "- If the user asks a question, answer it conversationally first, then provide code changes if relevant.",
+          "- If the user asks for a change or improvement, write the updated file(s) using <file path=\"...\"> blocks.",
+          "- If the user just says 'hi', 'hello', or wants to chat, respond normally like a colleague.",
+          "- Always read the file tree and code context above before making any changes.",
+          "- When modifying files, always output the COMPLETE updated file content, not just snippets.",
+          "- You may write a brief explanation before and after the <file> blocks.",
         ].join("\n"),
       });
     }

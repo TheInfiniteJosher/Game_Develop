@@ -10,8 +10,10 @@ import { Button } from "@/components/ui/button";
 interface GeneratedAsset {
   path: string;
   filename: string;
+  folder: string;
   assetType: string;
   previewUrl: string;
+  imported?: boolean;
   metadata?: {
     frameCount?: number;
     frameWidth?: number;
@@ -75,12 +77,17 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 function groupAssets(assets: GeneratedAsset[]) {
-  const groups: Record<string, GeneratedAsset[]> = {};
+  const generated: Record<string, GeneratedAsset[]> = {};
+  const imported: GeneratedAsset[] = [];
   for (const a of assets) {
-    const label = TYPE_LABELS[a.assetType] ?? a.assetType;
-    (groups[label] ??= []).push(a);
+    if (a.imported) {
+      imported.push(a);
+    } else {
+      const label = TYPE_LABELS[a.assetType] ?? a.assetType;
+      (generated[label] ??= []).push(a);
+    }
   }
-  return groups;
+  return { generated, imported };
 }
 
 // ─── Rename input ─────────────────────────────────────────────────────────────
@@ -294,7 +301,7 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
     }
   };
 
-  const groups = groupAssets(assets);
+  const { generated: groups, imported: importedAssets } = groupAssets(assets);
   const totalCount = assets.length + audioAssets.length;
 
   return (
@@ -368,7 +375,81 @@ export function AssetBrowser({ projectId, onGenerateClick }: AssetBrowserProps) 
           </div>
         )}
 
-        {/* Grouped image asset grid */}
+        {/* Imported assets section (images from uploaded project) */}
+        {importedAssets.length > 0 && (
+          <div className="border-b border-border">
+            <div className="px-2 py-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-sidebar">
+              <Upload className="w-3 h-3" />
+              Imported ({importedAssets.length})
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 p-1.5">
+              {importedAssets.map(asset => (
+                <div
+                  key={asset.path}
+                  className={`group relative rounded-lg border overflow-hidden cursor-pointer transition-all ${
+                    selectedAsset?.path === asset.path
+                      ? "border-primary/60 ring-1 ring-primary/30"
+                      : "border-border hover:border-border/80"
+                  }`}
+                  onClick={() => {
+                    const next = selectedAsset?.path === asset.path ? null : asset;
+                    setSelectedAsset(next);
+                    setShowSnippet(false);
+                    setShowAnimForm(false);
+                    setAnimError("");
+                  }}
+                >
+                  <div className="bg-[repeating-conic-gradient(#2a2a3a_0%_25%,#1e1e2e_0%_50%)] bg-[size:10px_10px] aspect-square relative">
+                    <img src={asset.previewUrl} alt={asset.filename} className="w-full h-full object-contain" loading="lazy" />
+                    <div className="absolute inset-0 bg-background/75 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 flex-wrap p-1">
+                      <button
+                        onClick={e => { e.stopPropagation(); copyPath(asset.path); }}
+                        className="p-1.5 rounded bg-card border border-border hover:border-primary/50 hover:text-primary transition-colors"
+                        title="Copy path"
+                      >
+                        <Copy className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); downloadFile(asset.previewUrl, asset.filename); }}
+                        className="p-1.5 rounded bg-card border border-border hover:border-primary/50 hover:text-primary transition-colors"
+                        title="Download"
+                      >
+                        <Download className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); handleDelete(asset); }}
+                        className="p-1.5 rounded bg-card border border-border hover:border-red-500/50 hover:text-red-400 transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                  {renamingPath === asset.path ? (
+                    <div className="py-0.5" onClick={e => e.stopPropagation()}>
+                      <RenameInput
+                        initial={asset.filename}
+                        onCommit={name => handleRename(asset, name)}
+                        onCancel={() => setRenamingPath(null)}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      className="px-1.5 py-1 text-[10px] text-muted-foreground truncate leading-tight"
+                      title={`${asset.folder ? asset.folder + "/" : ""}${asset.filename}`}
+                      onDoubleClick={e => { e.stopPropagation(); setRenamingPath(asset.path); }}
+                    >
+                      <span className="text-muted-foreground/50 text-[9px]">{asset.folder ? asset.folder + "/" : ""}</span>
+                      {asset.filename}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Grouped AI-generated image asset grid */}
         {Object.entries(groups).map(([group, items]) => (
           <div key={group} className="border-b border-border last:border-0">
             <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60 bg-sidebar">
