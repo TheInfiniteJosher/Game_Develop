@@ -1,0 +1,524 @@
+GAMEFORGE STRUCTURED GENERATION UPGRADE
+=======================================
+We are upgrading GameForge to support a new AI generation methodology that significantly improves the reliability of producing fully playable game prototypes from simple prompts.
+
+Key Insight:
+High-performing game-generation agents (such as Gambo) do not generate games from scratch each time. Instead, they generate games within a structured architecture that provides reusable primitives and predictable integration points.
+
+We want to implement this approach in GameForge WITHOUT permanently locking the platform into one rigid architecture.
+
+Therefore, we will implement a toggleable Generation Mode system.
+
+--------------------------------------------------
+
+FEATURE TO IMPLEMENT
+
+Create a new setting:
+
+Generation Mode
+
+Possible values:
+
+"structured"
+"hybrid"
+"creative"
+
+Store in:
+
+/config/userSettings.json
+
+Example:
+
+{
+  "generationMode": "structured"
+}
+
+--------------------------------------------------
+MODE DEFINITIONS
+--------------------------------------------------
+
+
+STRUCTURED MODE BEHAVIOR
+
+When Generation Mode = "structured":
+
+The AI must operate within a predefined set of architectural contracts designed to ensure output is consistently playable.
+
+Implement a Generation Contract Layer that influences how prompts are constructed and how generated code integrates into the existing project.
+
+Generation Contract Requirements:
+
+1. AI must extend existing architecture rather than create single-file demos
+2. AI must output modular ES6 class-based code
+3. AI must integrate into existing file structure
+4. AI must separate configuration values from logic
+5. AI must reuse core gameplay primitives
+6. AI must produce complete gameplay loops
+
+--------------------------------------------------
+Also
+--------------------------------------------------
+
+HYBRID MODE
+
+When generationMode = "hybrid":
+
+AI may extend base architecture but should still prefer existing primitives.
+
+--------------------------------------------------
+
+CREATIVE MODE
+
+When generationMode = "creative":
+
+AI may design new architecture freely.
+
+--------------------------------------------------
+BASE FILE STRUCTURE
+
+Create directories:
+
+/engine/
+/engine/entities/
+/engine/systems/
+/engine/utils/
+
+/scenes/
+
+/config/
+
+ADD BASE ARCHITECTURE LAYER
+
+Create reusable primitives:
+
+/engine
+
+BaseScene.js
+BaseLevelScene.js
+BaseEntity.js
+BaseCharacter.js
+BaseEnemy.js
+BasePlayer.js
+
+systems:
+
+InputManager.js
+CombatSystem.js
+HealthSystem.js
+PhysicsSystem.js
+AnimationSystem.js
+AudioSystem.js
+CameraEffects.js
+DamageNumberSystem.js
+
+--------------------------------------------------
+--------------------------------------------------
+
+CORE ENGINE CLASSES
+
+/engine/BaseScene.js
+
+export default class BaseScene extends Phaser.Scene {
+
+    constructor(key) {
+        super(key)
+    }
+
+    create() {
+        this.setupCamera()
+    }
+
+    setupCamera() {
+        this.cameras.main.setBackgroundColor("#000")
+    }
+
+}
+
+--------------------------------------------------
+
+/engine/BaseLevelScene.js
+
+import BaseScene from "./BaseScene.js"
+
+export default class BaseLevelScene extends BaseScene {
+
+    constructor(key) {
+        super(key)
+
+        this.player = null
+        this.enemies = null
+    }
+
+    create() {
+
+        super.create()
+
+        this.createMap()
+        this.createPlayer()
+        this.createEnemies()
+
+        this.setupCollisions()
+        this.setupCameraFollow()
+        this.setupWinCondition()
+    }
+
+    createMap() {}
+
+    createPlayer() {}
+
+    createEnemies() {}
+
+    setupCollisions() {}
+
+    setupCameraFollow() {
+
+        if (this.player)
+            this.cameras.main.startFollow(this.player)
+    }
+
+    setupWinCondition() {}
+
+}
+
+--------------------------------------------------
+
+ENTITY BASE CLASSES
+
+/engine/entities/BaseEntity.js
+
+export default class BaseEntity extends Phaser.Physics.Arcade.Sprite {
+
+    constructor(scene,x,y,texture) {
+
+        super(scene,x,y,texture)
+
+        scene.add.existing(this)
+        scene.physics.add.existing(this)
+
+        this.health = 100
+    }
+
+    takeDamage(amount) {
+
+        this.health -= amount
+
+        if (this.health <= 0)
+            this.die()
+    }
+
+    die() {
+
+        this.destroy()
+    }
+
+}
+
+--------------------------------------------------
+
+/engine/entities/BaseCharacter.js
+
+import BaseEntity from "./BaseEntity.js"
+
+export default class BaseCharacter extends BaseEntity {
+
+    constructor(scene,x,y,texture) {
+
+        super(scene,x,y,texture)
+
+        this.speed = 200
+        this.abilities = {}
+    }
+
+    update() {}
+
+}
+
+--------------------------------------------------
+
+/engine/entities/BasePlayer.js
+
+import BaseCharacter from "./BaseCharacter.js"
+
+export default class BasePlayer extends BaseCharacter {
+
+    constructor(scene,x,y,texture) {
+
+        super(scene,x,y,texture)
+
+        this.cursors = scene.input.keyboard.createCursorKeys()
+    }
+
+    update() {
+
+        if (this.cursors.left.isDown)
+            this.setVelocityX(-this.speed)
+
+        else if (this.cursors.right.isDown)
+            this.setVelocityX(this.speed)
+
+        else
+            this.setVelocityX(0)
+
+    }
+
+}
+
+--------------------------------------------------
+
+/engine/entities/BaseEnemy.js
+
+import BaseCharacter from "./BaseCharacter.js"
+
+export default class BaseEnemy extends BaseCharacter {
+
+    constructor(scene,x,y,texture) {
+
+        super(scene,x,y,texture)
+    }
+
+    update() {
+
+        this.patrol()
+    }
+
+    patrol() {
+
+        this.setVelocityX(50)
+    }
+
+}
+
+--------------------------------------------------
+
+
+--------------------------------------------------
+
+
+
+SYSTEMS LAYER
+
+/engine/systems/CombatSystem.js
+
+export default class CombatSystem {
+
+    static applyDamage(attacker,target,amount) {
+
+        target.takeDamage(amount)
+    }
+
+}
+
+--------------------------------------------------
+
+/engine/systems/HealthSystem.js
+
+export default class HealthSystem {
+
+    static isAlive(entity) {
+
+        return entity.health > 0
+    }
+
+}
+
+--------------------------------------------------
+
+/engine/systems/AnimationSystem.js
+
+export default class AnimationSystem {
+
+    static play(entity,key) {
+
+        if (entity.anims)
+            entity.anims.play(key,true)
+    }
+
+}
+
+--------------------------------------------------
+
+/engine/systems/CameraEffects.js
+
+export default class CameraEffects {
+
+    static shake(scene) {
+
+        scene.cameras.main.shake(120,.01)
+    }
+
+}
+
+--------------------------------------------------
+
+/engine/utils/DamageNumbers.js
+
+export function showDamage(scene,x,y,value) {
+
+    const text = scene.add.text(x,y,value)
+
+    scene.tweens.add({
+
+        targets:text,
+        y:y-20,
+        alpha:0,
+        duration:600,
+        onComplete:()=>text.destroy()
+
+    })
+
+}
+
+--------------------------------------------------
+
+
+
+
+CREATE STANDARD SCENE FLOW
+
+/scenes
+
+/scenes/LoadingScene.js
+/scenes/TitleScene.js
+/scenes/UIScene.js
+/scenes/VictoryScene.js
+/scenes/GameOverScene.js
+/scenes/GameCompleteScene.js
+
+
+BaseLevelScene must manage:
+
+player spawning
+enemy spawning
+collision groups
+camera follow
+win condition checks
+UI activation
+--------------------------------------------------
+
+--------------------------------------------------
+
+CONFIG DRIVEN GAMEPLAY
+
+Create:
+
+/config/gameConfig.json
+
+Example schema:
+
+{
+  "player": {
+    "speed": 200,
+    "jumpForce": 750,
+    "health": 100
+  },
+
+  "enemy": {
+    "speed": 120,
+    "health": 60,
+    "damage": 10
+  }
+}
+
+AI must modify config values instead of hardcoding gameplay constants.
+
+--------------------------------------------------
+
+STANDARD ENTITY STRUCTURE
+
+Entities must follow pattern:
+
+constructor(scene)
+createAnimations()
+update()
+takeDamage(amount)
+die()
+
+--------------------------------------------------
+AI should modify these values instead of hardcoding constants.
+--------------------------------------------------
+
+ABILITY SYSTEM TEMPLATE
+
+Create reusable structure:
+
+abilities = {
+
+  primaryAttack: {
+
+    damage:10,
+    cooldown:400,
+    animation:"attack"
+
+  }
+
+}
+--------------------------------------------------
+
+PROMPT BUILDER UPGRADE
+
+Modify GameForge AI prompt builder so that when generationMode = "structured", the AI receives additional system context.
+
+Inject into AI prompt:
+
+PROJECT ARCHITECTURE OVERVIEW
+LIST OF AVAILABLE BASE CLASSES
+FILE STRUCTURE
+RULES FOR EXTENDING SYSTEMS
+REQUIREMENT TO PRODUCE FILE TREE
+
+--------------------------------------------------
+
+OUTPUT FORMAT REQUIREMENT
+
+AI responses should follow structured output:
+
+1. file tree changes
+2. new files
+3. modified files
+4. integration steps /  instructions
+5. config changes
+
+
+--------------------------------------------------
+
+GOALS
+
+Improve reliability of AI-generated games by reducing architectural ambiguity.
+
+Ensure simple prompts like:
+
+"create a ninja platformer with melee combat"
+
+produce / Expected output:
+
+fully playable prototype
+player controller
+enemy AI
+UI scene
+level scene
+win condition
+basic juice effects
+
+
+
+——————————————————————-
+
+IMPORTANT RULES
+
+DO NOT generate single-file index.html games.
+
+ALWAYS integrate with architecture.
+
+ALWAYS extend base classes.
+
+ALWAYS use modular ES6 files.
+
+--------------------------------------------------
+
+DO NOT REMOVE EXISTING FUNCTIONALITY
+
+Add this as an additive layer to the GameForge system.
+
+--------------------------------------------------
+
+END OF SPEC

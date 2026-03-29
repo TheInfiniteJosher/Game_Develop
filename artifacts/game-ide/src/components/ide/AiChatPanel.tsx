@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Send, Square, Trash2, ChevronRight, Bot, User, Loader2, FileCode2,
   Sparkles, CheckCircle2, AlertCircle, Music2, Volume2,
-  PenLine, Cpu, Gamepad2, Check,
+  PenLine, Cpu, Gamepad2, Check, Layers, Shuffle, Wand2,
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import ReactMarkdown from "react-markdown";
@@ -395,6 +395,18 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
   } = useAiChatStream(projectId, onGameReady);
 
   const [input, setInput] = useState("");
+
+  // Generation mode — persisted across sessions
+  type GenMode = "structured" | "hybrid" | "creative";
+  const [generationMode, setGenerationModeState] = useState<GenMode>(() => {
+    const saved = localStorage.getItem("gameforge_generation_mode");
+    return (saved === "structured" || saved === "hybrid" || saved === "creative") ? saved : "structured";
+  });
+  const setGenerationMode = (m: GenMode) => {
+    setGenerationModeState(m);
+    localStorage.setItem("gameforge_generation_mode", m);
+  };
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const isUserScrolledUp = useRef(false);
   const [thinkingOpen, setThinkingOpen] = useState(true);
@@ -421,7 +433,7 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
 
   const handleSend = () => {
     if (!input.trim() || isStreaming) return;
-    sendMessage(input);
+    sendMessage(input, undefined, generationMode);
     setInput("");
   };
 
@@ -609,6 +621,37 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
 
       {/* Input area */}
       <div className="p-3 border-t border-border bg-card">
+        {/* Generation mode selector */}
+        <div className="flex items-center gap-2 mb-2.5">
+          <span className="text-[10px] text-muted-foreground/60 font-medium shrink-0">Mode:</span>
+          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-muted/40 border border-border/40">
+            {([
+              { id: "structured", label: "Structured", Icon: Layers,  tip: "Extends engine base classes — most reliable" },
+              { id: "hybrid",     label: "Hybrid",     Icon: Shuffle,  tip: "Prefers engine classes, allows custom architecture" },
+              { id: "creative",   label: "Creative",   Icon: Wand2,    tip: "Free-form — designs architecture from scratch" },
+            ] as const).map(({ id, label, Icon, tip }) => (
+              <button
+                key={id}
+                onClick={() => setGenerationMode(id)}
+                disabled={isStreaming}
+                title={tip}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium transition-all disabled:opacity-40 ${
+                  generationMode === id
+                    ? id === "structured"
+                      ? "bg-violet-500/20 text-violet-300 border border-violet-500/30"
+                      : id === "hybrid"
+                        ? "bg-primary/20 text-primary border border-primary/30"
+                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Icon className="w-2.5 h-2.5" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Prompt hints */}
         <div className="flex flex-wrap gap-1.5 mb-2">
           {[

@@ -94,7 +94,11 @@ export function useAiChatStream(projectId: string, onGameReady?: () => void) {
     abortRef.current?.abort();
   }, []);
 
-  const sendMessage = useCallback(async (message: string, contextFiles?: string[]) => {
+  const sendMessage = useCallback(async (
+    message: string,
+    contextFiles?: string[],
+    generationMode?: string,
+  ) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -119,7 +123,7 @@ export function useAiChatStream(projectId: string, onGameReady?: () => void) {
       const res = await fetch(`/api/projects/${projectId}/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message, contextFiles }),
+        body: JSON.stringify({ message, contextFiles, generationMode }),
         signal: controller.signal,
       });
 

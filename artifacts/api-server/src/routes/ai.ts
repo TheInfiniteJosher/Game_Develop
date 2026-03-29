@@ -14,6 +14,12 @@ import {
 import { generateAssetForProject } from "../services/assetGeneration.js";
 import { generateAudioForProject } from "../services/audioPipeline.js";
 import { invalidateBundleCache } from "../services/preview-bundler.js";
+import {
+  scaffoldEngine,
+  isEngineScaffolded,
+  STRUCTURED_PROMPT_INJECTION,
+  HYBRID_PROMPT_INJECTION,
+} from "../services/scaffolding.js";
 import { nanoid } from "../lib/nanoid.js";
 import { existsSync } from "fs";
 
@@ -646,7 +652,9 @@ function stripFileBlocks(text: string): string {
 
 router.post("/ai/chat", async (req, res) => {
   const { id } = req.params;
-  const { message, contextFiles } = req.body;
+  const { message, contextFiles, generationMode = "creative" } = req.body;
+  const genMode: "structured" | "hybrid" | "creative" =
+    ["structured", "hybrid", "creative"].includes(generationMode) ? generationMode : "creative";
 
   if (!message) return res.status(400).json({ error: "message is required" });
 
@@ -681,6 +689,15 @@ router.post("/ai/chat", async (req, res) => {
     const assetsDir = `${root}/assets`;
     const hasExistingAssets = existsSync(assetsDir);
     const hasExistingGame  = existsSync(`${root}/index.html`) || existsSync(`${root}/src/main.js`);
+
+    // ── Structured/Hybrid mode: scaffold engine base classes into new projects ──
+    let scaffoldedFiles: string[] = [];
+    if (genMode !== "creative" && !isEngineScaffolded(id)) {
+      scaffoldedFiles = await scaffoldEngine(id).catch(() => []);
+      if (scaffoldedFiles.length > 0) {
+        sendEvent({ type: "thinking", content: `Engine scaffolded (${scaffoldedFiles.length} base files)` });
+      }
+    }
 
     if (existsSync(root)) {
       const tree = await buildFileTree(root);
@@ -736,10 +753,18 @@ router.post("/ai/chat", async (req, res) => {
       .orderBy(aiMessagesTable.timestamp)
       .limit(20);
 
+    // Build the mode-specific architecture injection (prepended so it comes FIRST)
+    const modeInjection =
+      genMode === "structured" ? STRUCTURED_PROMPT_INJECTION :
+      genMode === "hybrid"     ? HYBRID_PROMPT_INJECTION     : "";
+
     const chatMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       {
         role: "system",
-        content: SYSTEM_PROMPT + (fileTreeStr ? `\n\nProject file tree:\n${fileTreeStr}` : "\n\nNo files uploaded yet."),
+        content:
+          modeInjection +
+          SYSTEM_PROMPT +
+          (fileTreeStr ? `\n\nProject file tree:\n${fileTreeStr}` : "\n\nNo files uploaded yet."),
       },
     ];
 
