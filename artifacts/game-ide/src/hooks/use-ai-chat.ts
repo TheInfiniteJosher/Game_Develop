@@ -86,6 +86,7 @@ export function useAiChatStream(projectId: string, onGameReady?: () => void) {
   const [isBuildWorkflow, setIsBuildWorkflow] = useState(saved?.isBuildWorkflow ?? false);
   const [isBuildComplete, setIsBuildComplete] = useState(saved?.isBuildComplete ?? false);
   const [filesWritten, setFilesWritten] = useState(saved?.filesWritten ?? 0);
+  const [pendingWrites, setPendingWrites] = useState<string[]>([]);
 
   const queryClient = useQueryClient();
   const abortRef = useRef<AbortController | null>(null);
@@ -114,6 +115,7 @@ export function useAiChatStream(projectId: string, onGameReady?: () => void) {
     setIsBuildWorkflow(false);
     setIsBuildComplete(false);
     setFilesWritten(0);
+    setPendingWrites([]);
 
     // Local variables to track current build state for snapshotting
     let currentAssets: GeneratingAsset[] = [];
@@ -265,6 +267,12 @@ export function useAiChatStream(projectId: string, onGameReady?: () => void) {
               } else if (data.type === 'assets_done') {
                 setPhase('writing');
 
+              } else if (data.type === 'writing_files') {
+                // Server finished streaming and is about to write files to disk.
+                // Populate pendingWrites so the UI can show a progress card
+                // during the gap between "AI finished talking" and "files saved".
+                setPendingWrites(data.files || []);
+
               } else if (data.type === 'change') {
                 queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/files`] });
 
@@ -272,6 +280,7 @@ export function useAiChatStream(projectId: string, onGameReady?: () => void) {
                 const newFilesWritten = data.filesWritten || 0;
                 setFilesWritten(newFilesWritten);
                 setIsBuildComplete(true);
+                setPendingWrites([]);
                 setPhase('complete');
                 onGameReady?.();
                 queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/files`] });
@@ -324,5 +333,6 @@ export function useAiChatStream(projectId: string, onGameReady?: () => void) {
     isBuildWorkflow,
     isBuildComplete,
     filesWritten,
+    pendingWrites,
   };
 }

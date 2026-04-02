@@ -392,6 +392,7 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
     isBuildWorkflow,
     isBuildComplete,
     filesWritten,
+    pendingWrites,
   } = useAiChatStream(projectId, onGameReady);
 
   const [input, setInput] = useState("");
@@ -603,8 +604,8 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
                 </div>
               )}
 
-              {/* File write indicators (non-build) */}
-              {!isBuildWorkflow && writingFiles.length > 0 && (
+              {/* File write indicators (non-build, during streaming) */}
+              {!isBuildWorkflow && writingFiles.length > 0 && pendingWrites.length === 0 && (
                 <div className="flex flex-col gap-1 mt-0.5">
                   {writingFiles.map(f => (
                     <div key={f} className="flex items-center gap-1.5 text-[11px] text-muted-foreground px-1">
@@ -612,6 +613,26 @@ export function AiChatPanel({ projectId }: { projectId: string }) {
                       <span className="truncate">{f}</span>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* "Applying changes" card — shown after streaming ends while server writes files */}
+              {pendingWrites.length > 0 && (
+                <div className="w-full rounded-xl border border-primary/30 bg-primary/5 p-3 mt-1 flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-primary shrink-0" />
+                    <span className="text-[12px] font-semibold text-primary">
+                      Applying {pendingWrites.length} file change{pendingWrites.length !== 1 ? 's' : ''}…
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {pendingWrites.map(f => (
+                      <div key={f} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <FileCode2 className="w-3 h-3 shrink-0 text-muted-foreground/60" />
+                        <span className="truncate font-mono">{f}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

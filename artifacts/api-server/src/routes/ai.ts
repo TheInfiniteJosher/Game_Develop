@@ -1185,6 +1185,12 @@ router.post("/ai/chat", async (req, res) => {
     const appliedChanges: string[] = [];
     const assistantMsgId = nanoid();
 
+    // Signal to the client that file-writing is about to begin so it can
+    // show progress feedback during the gap between streaming end and disk write.
+    if (edits.length > 0) {
+      sendEvent({ type: "writing_files", files: edits.map(e => e.path) });
+    }
+
     for (const edit of edits) {
       try {
         let previousContent: string | undefined;
