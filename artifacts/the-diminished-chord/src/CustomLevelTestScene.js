@@ -603,10 +603,9 @@ export class CustomLevelTestScene extends Phaser.Scene {
         cableContainer.add(graphics)
         cableContainer.setDepth(5)  // Above platforms but below player
         
-        // Create slow zone collider
+        // Create slow zone collider (static body — gravity doesn't apply by definition)
         const zone = this.add.zone(x, y, this.tileSize * 0.8, this.tileSize * 0.8)
         this.physics.add.existing(zone, true)
-        zone.body.setAllowGravity(false)
         this.slowZones.add(zone)
       }
     }
