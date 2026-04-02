@@ -472,6 +472,11 @@
         "type": "image",
         "key": "saw_blade_hazard",
         "url": "https://cdn-game-mcp.gambo.ai/b6f31e26-e4d5-40fb-8914-4c8ec84bde4b/images/saw_blade_hazard.png"
+      },
+      {
+        "type": "image",
+        "key": "cable_bundle_hazard",
+        "url": "assets/cable_bundle.png"
       }
     ]
   },

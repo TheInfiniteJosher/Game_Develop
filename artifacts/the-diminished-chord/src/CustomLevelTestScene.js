@@ -548,60 +548,29 @@ export class CustomLevelTestScene extends Phaser.Scene {
    * Create cables (slow zone) terrain
    */
   createCables(obj) {
+    const hasCableSprite = this.textures.exists("cable_bundle_hazard")
+
     for (let i = 0; i < obj.width; i++) {
       for (let j = 0; j < obj.height; j++) {
         const x = (obj.x + i + 0.5) * this.tileSize
         const y = (obj.y + j + 0.5) * this.tileSize
 
-        // Create visual representation of tangled cables
-        const cableContainer = this.add.container(x, y)
-        
-        // Draw tangled cable mess using graphics
-        const graphics = this.add.graphics()
-        const cableColor = 0x8844aa
-        const highlightColor = 0xaa66cc
-        
-        // Draw multiple tangled cables using Phaser 3's stroke methods
-        graphics.lineStyle(4, cableColor, 0.8)
-        
-        // Cable 1 - create curved path using spline curve
-        const curve1 = new Phaser.Curves.Spline([
-          new Phaser.Math.Vector2(-25, -20),
-          new Phaser.Math.Vector2(-10, 15),
-          new Phaser.Math.Vector2(10, -15),
-          new Phaser.Math.Vector2(25, 20)
-        ])
-        curve1.draw(graphics, 32)
-        
-        // Cable 2 - different curve
-        graphics.lineStyle(3, highlightColor, 0.7)
-        const curve2 = new Phaser.Curves.Spline([
-          new Phaser.Math.Vector2(-20, 25),
-          new Phaser.Math.Vector2(5, -10),
-          new Phaser.Math.Vector2(-5, 10),
-          new Phaser.Math.Vector2(20, -25)
-        ])
-        curve2.draw(graphics, 32)
-        
-        // Cable 3 - wrapped (using line segments)
-        graphics.lineStyle(3, cableColor, 0.6)
-        graphics.beginPath()
-        graphics.moveTo(-15, -15)
-        graphics.lineTo(0, 0)
-        graphics.lineTo(15, -10)
-        graphics.lineTo(5, 15)
-        graphics.lineTo(-10, 10)
-        graphics.strokePath()
-        
-        // Add some connector dots
-        graphics.fillStyle(0x666666, 0.9)
-        graphics.fillCircle(-25, -20, 4)
-        graphics.fillCircle(25, 20, 4)
-        graphics.fillCircle(-20, 25, 4)
-        graphics.fillCircle(20, -25, 4)
-        
-        cableContainer.add(graphics)
-        cableContainer.setDepth(5)  // Above platforms but below player
+        if (hasCableSprite) {
+          // Use generated sprite — wide & flat so it looks like cables on the ground
+          const tileW = this.tileSize * 1.35
+          const tileH = this.tileSize * 0.55
+          // Slight per-cell variation so repeated tiles don't look identical
+          const jitter = ((i * 7 + j * 13) % 7 - 3) * 0.02  // -0.06 … +0.06 rad
+          const scaleNoise = 1 + ((i * 3 + j * 5) % 5 - 2) * 0.04  // 0.92 … 1.08×
+          const img = this.add.image(x, y + this.tileSize * 0.12, "cable_bundle_hazard")
+          img.setDisplaySize(tileW * scaleNoise, tileH * scaleNoise)
+          img.setRotation(jitter)
+          img.setDepth(5)
+        } else {
+          // Fallback — plain tinted rectangle (no procedural curves to avoid z-fighting)
+          const rect = this.add.rectangle(x, y, this.tileSize, this.tileSize * 0.5, 0x8844aa, 0.55)
+          rect.setDepth(5)
+        }
         
         // Create slow zone collider (static body — gravity doesn't apply by definition)
         const zone = this.add.zone(x, y, this.tileSize * 0.8, this.tileSize * 0.8)

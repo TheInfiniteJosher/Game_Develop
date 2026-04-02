@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "DK7aoSPTuCcl91B38_cms"
+uri = "file://artifacts/the-diminished-chord/public/assets/cable_bundle.png"
+type = "image"
+title = "cable bundle floor hazard"
