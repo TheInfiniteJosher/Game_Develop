@@ -743,10 +743,18 @@ export class CustomLevelTestScene extends Phaser.Scene {
     }
     this.input.keyboard.on("keydown-R", doRestart)
 
-    // Gamepad "select" button (mapped to R) — directly handled here because
-    // simulated key events can be missed when the player is in a dead state
+    // Any key press while dead → force-respawn at spawn point
+    this.input.keyboard.on("keydown", () => {
+      if (this.player?.isDead) this._forceRespawn()
+    })
+
+    // Gamepad: any button while dead → respawn; "select" while alive → full restart
     this._gamepadRestartHandler = ({ action }) => {
-      if (action === "select") doRestart()
+      if (this.player?.isDead) {
+        this._forceRespawn()
+      } else if (action === "select") {
+        doRestart()
+      }
     }
     GamepadManager.on("buttondown", this._gamepadRestartHandler)
 
@@ -1004,6 +1012,26 @@ export class CustomLevelTestScene extends Phaser.Scene {
     const controls = getMergedControls(this.cursors, this.registry)
     
     this.player.update(controls, time)
+
+    // Death state: show respawn prompt; any-button respawn handled by listeners
+    if (this.player.isDead) {
+      if (!this._deathPrompt) {
+        const cx = this.cameras.main.width / 2
+        const cy = this.cameras.main.height / 2
+        this._deathPrompt = this.add.text(cx, cy + 60, "PRESS ANY BUTTON TO RESPAWN", {
+          fontFamily: "RetroPixel",
+          fontSize: "14px",
+          color: "#ff6666",
+          backgroundColor: "#00000099",
+          padding: { x: 12, y: 6 }
+        }).setOrigin(0.5).setScrollFactor(0).setDepth(210)
+      }
+    } else {
+      if (this._deathPrompt) {
+        this._deathPrompt.destroy()
+        this._deathPrompt = null
+      }
+    }
     
     // Handle slow zone timeout - restore speed when player leaves cables
     if (this.player.inSlowZone) {
@@ -1014,6 +1042,22 @@ export class CustomLevelTestScene extends Phaser.Scene {
         this.player.runSpeed = this.player.originalRunSpeed || 390
       }
     }
+  }
+
+  /**
+   * Force-respawn the player at the spawn point even if they are in a dead state.
+   * Used for test mode where we want instant recovery rather than a full restart.
+   */
+  _forceRespawn() {
+    if (!this.player || this.gameCompleted) return
+    // Sync TeddyPlayer's internal spawn coords to the scene's spawn point
+    if (this.spawnPoint) {
+      this.player.spawnX = this.spawnPoint.x
+      this.player.spawnY = this.spawnPoint.y
+      this.player.spawnFacingDirection = this.spawnFacingDirection || "right"
+    }
+    this.player.respawn()
+    this.registry.set("testPlayerState", null)
   }
 
   // ==========================================
@@ -1146,8 +1190,13 @@ export class CustomLevelTestScene extends Phaser.Scene {
   async applyMusicMode() {
     switch (this.testMusicMode) {
       case "dev":
-        // Dev-mode music should be kept playing uninterrupted.
-        // Only restart it if something stopped it externally.
+        // If an assigned / test track is currently playing, stop it so we can
+        // switch back to dev-mode music.
+        if (BGMManager.currentAudioKey?.startsWith("test_assigned_")) {
+          BGMManager.stop()
+        }
+        // Start dev-mode music if nothing is playing (handles both: first toggle
+        // and returning from an assigned track that was just stopped above).
         if (!BGMManager.isPlaying() && !BGMManager.isPaused()) {
           await BGMManager.playMenuMusic(this, MENU_KEYS.DEV_MODE)
         }
