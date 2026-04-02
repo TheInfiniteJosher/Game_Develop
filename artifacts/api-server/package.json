@@ -16,6 +16,7 @@
     "@types/uuid": "^11.0.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
+    "@workspace/integrations-anthropic-ai": "workspace:*",
     "adm-zip": "^0.5.16",
     "cookie-parser": "^1.4.7",
     "cors": "^2",

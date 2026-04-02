@@ -2,7 +2,8 @@ import { Router, type IRouter } from "express";
 import { db } from "@workspace/db";
 import { aiMessagesTable, fileChangesTable, projectsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import OpenAI from "openai";
+import Anthropic from "@anthropic-ai/sdk";
+import { anthropic } from "@workspace/integrations-anthropic-ai";
 import {
   buildFileTree,
   readFile,
@@ -25,105 +26,97 @@ import { existsSync } from "fs";
 
 const router: IRouter = Router({ mergeParams: true });
 
-const openai = new OpenAI({
-  baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-  apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY,
-});
+const MODEL = "claude-opus-4-6";
+const MAX_TOKENS = 8192;
 
 // ─── Tool definition ──────────────────────────────────────────────────────────
 
-const GAME_ASSET_TOOL: OpenAI.Chat.ChatCompletionTool = {
-  type: "function",
-  function: {
-    name: "generate_game_asset",
-    description:
-      "Generate a game asset image using AI image generation. " +
-      "Use this to create sprites, characters, enemies, items, backgrounds, tilesets, and UI elements needed for the game. " +
-      "Call this for EACH distinct visual asset needed. Assets are saved to the project and you must use the returned path in Phaser load calls. " +
-      "IMPORTANT: Only call this when building a themed/visual game that needs custom art. Do NOT generate assets for simple geometric shapes — use Phaser.Graphics instead.",
-    parameters: {
-      type: "object" as const,
-      properties: {
-        name: {
-          type: "string",
-          description: "Short identifier for this asset (snake_case, e.g. 'barista', 'coffee_cup', 'shop_background'). Used as the Phaser key.",
-        },
-        prompt: {
-          type: "string",
-          description: "Detailed visual description of what to generate. Be specific about colors, pose, perspective.",
-        },
-        assetType: {
-          type: "string",
-          enum: ["sprite", "animation", "background", "tileset", "ui", "vfx", "enemy", "item"],
-          description: "sprite=character/object, animation=sprite sheet, background=scene bg, tileset=repeating tiles, ui=interface element",
-        },
-        style: {
-          type: "string",
-          enum: ["pixel", "cartoon", "realistic", "vector", "painterly", "dark"],
-          description: "Visual art style. Default to pixel or cartoon for most games.",
-        },
-        frameCount: {
-          type: "number",
-          description: "Number of animation frames for sprite sheets. Use 1 for static assets (default: 1).",
-        },
-        aspectRatio: {
-          type: "string",
-          enum: ["1:1", "16:9", "4:3", "9:16"],
-          description: "Aspect ratio. Use 16:9 for backgrounds, 1:1 for sprites/characters (default: 1:1).",
-        },
+const GAME_ASSET_TOOL: Anthropic.Tool = {
+  name: "generate_game_asset",
+  description:
+    "Generate a game asset image using AI image generation. " +
+    "Use this to create sprites, characters, enemies, items, backgrounds, tilesets, and UI elements needed for the game. " +
+    "Call this for EACH distinct visual asset needed. Assets are saved to the project and you must use the returned path in Phaser load calls. " +
+    "IMPORTANT: Only call this when building a themed/visual game that needs custom art. Do NOT generate assets for simple geometric shapes — use Phaser.Graphics instead.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      name: {
+        type: "string",
+        description: "Short identifier for this asset (snake_case, e.g. 'barista', 'coffee_cup', 'shop_background'). Used as the Phaser key.",
       },
-      required: ["name", "prompt", "assetType", "style"],
+      prompt: {
+        type: "string",
+        description: "Detailed visual description of what to generate. Be specific about colors, pose, perspective.",
+      },
+      assetType: {
+        type: "string",
+        enum: ["sprite", "animation", "background", "tileset", "ui", "vfx", "enemy", "item"],
+        description: "sprite=character/object, animation=sprite sheet, background=scene bg, tileset=repeating tiles, ui=interface element",
+      },
+      style: {
+        type: "string",
+        enum: ["pixel", "cartoon", "realistic", "vector", "painterly", "dark"],
+        description: "Visual art style. Default to pixel or cartoon for most games.",
+      },
+      frameCount: {
+        type: "number",
+        description: "Number of animation frames for sprite sheets. Use 1 for static assets (default: 1).",
+      },
+      aspectRatio: {
+        type: "string",
+        enum: ["1:1", "16:9", "4:3", "9:16"],
+        description: "Aspect ratio. Use 16:9 for backgrounds, 1:1 for sprites/characters (default: 1:1).",
+      },
     },
+    required: ["name", "prompt", "assetType", "style"],
   },
 };
 
-const GAME_AUDIO_TOOL: OpenAI.Chat.ChatCompletionTool = {
-  type: "function",
-  function: {
-    name: "generate_game_audio",
-    description:
-      "Generate a game audio file (sound effect, music, or ambient track) using AI audio generation. " +
-      "Use this alongside generate_game_asset to produce a complete playable game with sound. " +
-      "Call for each distinct audio asset: background music, jump SFX, coin pickup, UI clicks, ambient loops, etc. " +
-      "Returns the file path to use in Phaser this.load.audio() calls. " +
-      "IMPORTANT: Only call this if ELEVENLABS_API_KEY is configured — check if audio generation is available first.",
-    parameters: {
-      type: "object" as const,
-      properties: {
-        audioName: {
-          type: "string",
-          description: "Short snake_case identifier and Phaser audio key (e.g. 'bg_music', 'jump_sfx', 'coin_pickup', 'ui_click')",
-        },
-        audioType: {
-          type: "string",
-          enum: ["sfx", "music", "ambient", "ui"],
-          description: "sfx=short action sound, music=loopable background track, ambient=environmental loop, ui=interface click/confirm",
-        },
-        description: {
-          type: "string",
-          description: "Clear description of what the sound should be. Be specific about the sound character.",
-        },
-        style: {
-          type: "string",
-          enum: ["8bit", "synth", "realistic", "fantasy", "scifi", "lofi", "cinematic"],
-          description: "Art style / sonic aesthetic. Match the game's visual style.",
-        },
-        mood: {
-          type: "string",
-          description: "Emotional tone: playful, tense, calm, epic, mysterious, cozy, energetic, spooky",
-        },
-        duration: {
-          type: "string",
-          enum: ["short", "medium", "long", "loop"],
-          description: "short=<2s (sfx/ui), medium=4s (sfx), long=8s (sfx/ambient), loop=20s (music/ambient)",
-        },
-        loop: {
-          type: "boolean",
-          description: "Whether Phaser should loop this audio. Always true for music and ambient.",
-        },
+const GAME_AUDIO_TOOL: Anthropic.Tool = {
+  name: "generate_game_audio",
+  description:
+    "Generate a game audio file (sound effect, music, or ambient track) using AI audio generation. " +
+    "Use this alongside generate_game_asset to produce a complete playable game with sound. " +
+    "Call for each distinct audio asset: background music, jump SFX, coin pickup, UI clicks, ambient loops, etc. " +
+    "Returns the file path to use in Phaser this.load.audio() calls. " +
+    "IMPORTANT: Only call this if ELEVENLABS_API_KEY is configured — check if audio generation is available first.",
+  input_schema: {
+    type: "object" as const,
+    properties: {
+      audioName: {
+        type: "string",
+        description: "Short snake_case identifier and Phaser audio key (e.g. 'bg_music', 'jump_sfx', 'coin_pickup', 'ui_click')",
       },
-      required: ["audioName", "audioType", "description", "style"],
+      audioType: {
+        type: "string",
+        enum: ["sfx", "music", "ambient", "ui"],
+        description: "sfx=short action sound, music=loopable background track, ambient=environmental loop, ui=interface click/confirm",
+      },
+      description: {
+        type: "string",
+        description: "Clear description of what the sound should be. Be specific about the sound character.",
+      },
+      style: {
+        type: "string",
+        enum: ["8bit", "synth", "realistic", "fantasy", "scifi", "lofi", "cinematic"],
+        description: "Art style / sonic aesthetic. Match the game's visual style.",
+      },
+      mood: {
+        type: "string",
+        description: "Emotional tone: playful, tense, calm, epic, mysterious, cozy, energetic, spooky",
+      },
+      duration: {
+        type: "string",
+        enum: ["short", "medium", "long", "loop"],
+        description: "short=<2s (sfx/ui), medium=4s (sfx), long=8s (sfx/ambient), loop=20s (music/ambient)",
+      },
+      loop: {
+        type: "boolean",
+        description: "Whether Phaser should loop this audio. Always true for music and ambient.",
+      },
     },
+    required: ["audioName", "audioType", "description", "style"],
   },
 };
 
@@ -785,40 +778,35 @@ router.post("/ai/chat", async (req, res) => {
       genMode === "structured" ? STRUCTURED_PROMPT_INJECTION :
       genMode === "hybrid"     ? HYBRID_PROMPT_INJECTION     : "";
 
-    const chatMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-      {
-        role: "system",
-        content:
-          modeInjection +
-          SYSTEM_PROMPT +
-          (fileTreeStr ? `\n\nProject file tree:\n${fileTreeStr}` : "\n\nNo files uploaded yet."),
-      },
+    // ── Build system content (Anthropic takes system separate from messages) ──
+    const systemParts: string[] = [
+      modeInjection +
+      SYSTEM_PROMPT +
+      (fileTreeStr ? `\n\nProject file tree:\n${fileTreeStr}` : "\n\nNo files uploaded yet."),
     ];
 
     // ── Critical: prevent re-generation of assets that already exist ──────────
-    // The "TOOLS FIRST" rule in the system prompt causes the AI to call
-    // generate_game_asset on EVERY user message if we allow tools. When this
-    // project already has assets or game files, we inject an overriding instruction
-    // so the AI writes/edits code only — no asset re-generation.
     if (hasExistingAssets || hasExistingGame) {
-      chatMessages.push({
-        role: "system",
-        content: [
-          "EDIT MODE — OVERRIDE THE TOOLS-FIRST RULE:",
-          "This project already has existing game files (see file tree and code context above).",
-          "DO NOT call generate_game_asset or generate_game_audio.",
-          "DO NOT re-generate assets — they already exist on disk.",
-          "",
-          "How to respond:",
-          "- If the user asks a question, answer it conversationally first, then provide code changes if relevant.",
-          "- If the user asks for a change or improvement, write the updated file(s) using <file path=\"...\"> blocks.",
-          "- If the user just says 'hi', 'hello', or wants to chat, respond normally like a colleague.",
-          "- Always read the file tree and code context above before making any changes.",
-          "- When modifying files, always output the COMPLETE updated file content, not just snippets.",
-          "- You may write a brief explanation before and after the <file> blocks.",
-        ].join("\n"),
-      });
+      systemParts.push([
+        "EDIT MODE — OVERRIDE THE TOOLS-FIRST RULE:",
+        "This project already has existing game files (see file tree and code context above).",
+        "DO NOT call generate_game_asset or generate_game_audio.",
+        "DO NOT re-generate assets — they already exist on disk.",
+        "",
+        "How to respond:",
+        "- If the user asks a question, answer it conversationally first, then provide code changes if relevant.",
+        "- If the user asks for a change or improvement, write the updated file(s) using <file path=\"...\"> blocks.",
+        "- If the user just says 'hi', 'hello', or wants to chat, respond normally like a colleague.",
+        "- Always read the file tree and code context above before making any changes.",
+        "- When modifying files, always output the COMPLETE updated file content, not just snippets.",
+        "- You may write a brief explanation before and after the <file> blocks.",
+      ].join("\n"));
     }
+
+    const systemContent: Anthropic.TextBlockParam[] = systemParts.map(text => ({ type: "text" as const, text }));
+
+    // ── Build conversation messages (Anthropic: only user/assistant roles) ────
+    const chatMessages: Anthropic.MessageParam[] = [];
 
     for (const msg of history.slice(0, -1)) {
       chatMessages.push({
@@ -839,71 +827,59 @@ router.post("/ai/chat", async (req, res) => {
     let fullResponse = "";
     let thinkingContent = "";
 
-    // Accumulate tool calls from stream
-    type PartialToolCall = { id: string; name: string; args: string };
-    const toolCallsAccum: Record<number, PartialToolCall> = {};
+    // Accumulate tool_use blocks from stream
+    type AccumToolUse = { id: string; name: string; input: string };
+    const toolUsesAccum = new Map<number, AccumToolUse>();
 
     // Hard-block tool calls when the project already has assets or game files.
-    // Without this, the AI re-generates all assets on every follow-up message
-    // because the TOOLS FIRST system prompt rule tells it to.
     const allowTools = !hasExistingAssets && !hasExistingGame;
 
-    const stream1 = await openai.chat.completions.create({
-      model: "gpt-4o",
-      max_tokens: 16000,
+    const stream1 = anthropic.messages.stream({
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
+      system: systemContent,
       messages: chatMessages,
       ...(allowTools ? {
         tools: process.env.ELEVENLABS_API_KEY
           ? [GAME_ASSET_TOOL, GAME_AUDIO_TOOL]
           : [GAME_ASSET_TOOL],
-        tool_choice: "auto",
       } : {}),
-      stream: true,
     });
 
-    let finishReason: string | null = null;
+    let stopReason: string = "";
     let isFirstChunk = true;
-    let lastChunkContent = ""; // for continuation in edit mode
+    let lastChunkContent = "";
 
-    for await (const chunk of stream1) {
-      const delta = chunk.choices[0]?.delta;
-      finishReason = chunk.choices[0]?.finish_reason ?? finishReason;
-
-      if (delta?.content) {
-        if (isFirstChunk) {
-          sendEvent({ type: "thinking_done" });
-          isFirstChunk = false;
+    for await (const event of stream1) {
+      if (event.type === "content_block_start") {
+        if (event.content_block.type === "tool_use") {
+          if (isFirstChunk) { sendEvent({ type: "thinking_done" }); isFirstChunk = false; }
+          toolUsesAccum.set(event.index, { id: event.content_block.id, name: event.content_block.name, input: "" });
         }
-        lastChunkContent += delta.content;
-        fullResponse += delta.content;
-        sendEvent({ type: "delta", content: delta.content });
-      }
-
-      if (delta?.tool_calls) {
-        if (isFirstChunk) {
-          sendEvent({ type: "thinking_done" });
-          isFirstChunk = false;
+      } else if (event.type === "content_block_delta") {
+        if (event.delta.type === "text_delta") {
+          if (isFirstChunk) { sendEvent({ type: "thinking_done" }); isFirstChunk = false; }
+          const text = event.delta.text;
+          lastChunkContent += text;
+          fullResponse += text;
+          sendEvent({ type: "delta", content: text });
+        } else if (event.delta.type === "input_json_delta") {
+          const tu = toolUsesAccum.get(event.index);
+          if (tu) tu.input += event.delta.partial_json;
         }
-        for (const tc of delta.tool_calls) {
-          const idx = tc.index ?? 0;
-          if (!toolCallsAccum[idx]) {
-            toolCallsAccum[idx] = { id: "", name: "", args: "" };
-          }
-          if (tc.id) toolCallsAccum[idx].id = tc.id;
-          if (tc.function?.name) toolCallsAccum[idx].name = tc.function.name;
-          if (tc.function?.arguments) toolCallsAccum[idx].args += tc.function.arguments;
-        }
+      } else if (event.type === "message_delta") {
+        stopReason = event.delta.stop_reason ?? stopReason;
       }
     }
 
     // ── Round 1.5: edit mode continuation (no tools, hit token limit) ───────
     // When an existing project is being edited, tools are disabled so Round 1
     // IS the code-writing round. If it was cut off, loop until done.
-    const toolCallsList0 = Object.values(toolCallsAccum);
-    if (finishReason === "length" && !allowTools && toolCallsList0.length === 0) {
+    const toolCallsList0 = Array.from(toolUsesAccum.values());
+    if (stopReason === "max_tokens" && !allowTools && toolCallsList0.length === 0) {
       const r15Messages = [...chatMessages];
       let r15Iteration = 0;
-      while (r15Iteration < 5 && finishReason === "length") {
+      while (r15Iteration < 5 && stopReason === "max_tokens") {
         r15Messages.push({ role: "assistant", content: lastChunkContent });
         r15Messages.push({
           role: "user",
@@ -911,25 +887,25 @@ router.post("/ai/chat", async (req, res) => {
         });
         sendEvent({ type: "thinking", content: "Continuing to write remaining files..." });
 
-        const streamContinue = await openai.chat.completions.create({
-          model: "gpt-4o",
-          max_tokens: 16000,
+        const streamContinue = anthropic.messages.stream({
+          model: MODEL,
+          max_tokens: MAX_TOKENS,
+          system: systemContent,
           messages: r15Messages,
-          stream: true,
         });
 
         lastChunkContent = "";
-        let contFR: string | null = null;
-        for await (const chunk of streamContinue) {
-          const content = chunk.choices[0]?.delta?.content;
-          contFR = chunk.choices[0]?.finish_reason ?? contFR;
-          if (content) {
-            lastChunkContent += content;
-            fullResponse += content;
-            sendEvent({ type: "delta", content });
+        let contStopReason = "";
+        for await (const event of streamContinue) {
+          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
+            lastChunkContent += event.delta.text;
+            fullResponse += event.delta.text;
+            sendEvent({ type: "delta", content: event.delta.text });
+          } else if (event.type === "message_delta") {
+            contStopReason = event.delta.stop_reason ?? contStopReason;
           }
         }
-        finishReason = contFR ?? finishReason;
+        stopReason = contStopReason || stopReason;
         r15Iteration++;
       }
     }
@@ -938,7 +914,7 @@ router.post("/ai/chat", async (req, res) => {
 
     const toolCallsList = toolCallsList0; // already computed above
 
-    if (finishReason === "tool_calls" && toolCallsList.length > 0) {
+    if (stopReason === "tool_use" && toolCallsList.length > 0) {
       const assetCalls = toolCallsList.filter(tc => tc.name === "generate_game_asset");
       const audioCalls = toolCallsList.filter(tc => tc.name === "generate_game_audio");
       sendEvent({
@@ -947,29 +923,29 @@ router.post("/ai/chat", async (req, res) => {
         audioCount: audioCalls.length,
       });
 
-      // Add the assistant's tool_calls message to history
+      // Add the assistant message with tool_use content blocks (Anthropic format)
       chatMessages.push({
         role: "assistant",
-        content: null,
-        tool_calls: toolCallsList.map(tc => ({
+        content: toolCallsList.map(tc => ({
+          type: "tool_use" as const,
           id: tc.id,
-          type: "function" as const,
-          function: { name: tc.name, arguments: tc.args },
+          name: tc.name,
+          input: (() => { try { return JSON.parse(tc.input) as Record<string, unknown>; } catch { return {}; } })(),
         })),
       });
 
       // Execute all tool calls fully in parallel — no cap
-      const toolResults: OpenAI.Chat.ChatCompletionToolMessageParam[] = [];
+      type ToolResultEntry = { tool_use_id: string; content: string };
+      const toolResults: ToolResultEntry[] = [];
       const allCalls = toolCallsList;
       const batchResults = await Promise.all(
         allCalls.map(async (tc, globalIdx) => {
             let args: Record<string, unknown> = {};
             try {
-              args = JSON.parse(tc.args);
+              args = tc.input ? JSON.parse(tc.input) as Record<string, unknown> : {};
             } catch {
               return {
-                tool_call_id: tc.id,
-                role: "tool" as const,
+                tool_use_id: tc.id,
                 content: JSON.stringify({ error: "Failed to parse arguments" }),
               };
             }
@@ -1011,8 +987,7 @@ router.post("/ai/chat", async (req, res) => {
                 });
 
                 return {
-                  tool_call_id: tc.id,
-                  role: "tool" as const,
+                  tool_use_id: tc.id,
                   content: JSON.stringify({
                     success: true,
                     audioName,
@@ -1032,8 +1007,7 @@ router.post("/ai/chat", async (req, res) => {
                 });
 
                 return {
-                  tool_call_id: tc.id,
-                  role: "tool" as const,
+                  tool_use_id: tc.id,
                   content: JSON.stringify({ error: `Failed to generate audio: ${err}` }),
                 };
               }
@@ -1077,8 +1051,7 @@ router.post("/ai/chat", async (req, res) => {
               });
 
               return {
-                tool_call_id: tc.id,
-                role: "tool" as const,
+                tool_use_id: tc.id,
                 content: JSON.stringify({
                   success: true,
                   name: assetName,
@@ -1103,8 +1076,7 @@ router.post("/ai/chat", async (req, res) => {
               });
 
               return {
-                tool_call_id: tc.id,
-                role: "tool" as const,
+                tool_use_id: tc.id,
                 content: JSON.stringify({ error: `Failed to generate asset: ${err}` }),
               };
             }
@@ -1112,10 +1084,15 @@ router.post("/ai/chat", async (req, res) => {
         );
       toolResults.push(...batchResults);
 
-      // Add tool results to messages
-      for (const result of toolResults) {
-        chatMessages.push(result);
-      }
+      // Add all tool results as a single user message (Anthropic requires this)
+      chatMessages.push({
+        role: "user",
+        content: toolResults.map(r => ({
+          type: "tool_result" as const,
+          tool_use_id: r.tool_use_id,
+          content: r.content,
+        })),
+      });
 
       sendEvent({ type: "assets_done" });
       sendEvent({ type: "thinking", content: "Writing game code with generated assets..." });
@@ -1130,34 +1107,35 @@ router.post("/ai/chat", async (req, res) => {
       let isFirst2 = true;
 
       while (round3Iteration < MAX_CONTINUATIONS) {
-        const stream2 = await openai.chat.completions.create({
-          model: "gpt-4o",
-          max_tokens: 16000,
+        const stream2 = anthropic.messages.stream({
+          model: MODEL,
+          max_tokens: MAX_TOKENS,
+          system: systemContent,
           messages: round3Messages,
-          stream: true,
         });
 
         let chunkContent = "";
-        let r3FinishReason: string | null = null;
+        let r3StopReason = "";
 
-        for await (const chunk of stream2) {
-          const content = chunk.choices[0]?.delta?.content;
-          r3FinishReason = chunk.choices[0]?.finish_reason ?? r3FinishReason;
-          if (content) {
+        for await (const event of stream2) {
+          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
             if (isFirst2) {
               sendEvent({ type: "thinking_done" });
               isFirst2 = false;
             }
-            chunkContent += content;
-            fullResponse += content;
-            sendEvent({ type: "delta", content });
+            const text = event.delta.text;
+            chunkContent += text;
+            fullResponse += text;
+            sendEvent({ type: "delta", content: text });
+          } else if (event.type === "message_delta") {
+            r3StopReason = event.delta.stop_reason ?? r3StopReason;
           }
         }
 
         round3Iteration++;
 
-        if (r3FinishReason !== "length") {
-          // "stop" or null — AI finished normally
+        if (r3StopReason !== "max_tokens") {
+          // "end_turn" or unknown — AI finished normally
           break;
         }
 
