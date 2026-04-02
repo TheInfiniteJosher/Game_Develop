@@ -5,7 +5,7 @@ import { WORLDS, getAllLevelIds, parseLevelId, LEVEL_TYPES, getLevelId } from ".
 import { LevelDataManager } from "./LevelDataManager.js"
 import { PlatformRenderer } from "./PlatformRenderer.js"
 import { SupabaseMusicManager } from "./SupabaseMusicManager.js"
-import { BGMManager } from "./BGMManager.js"
+import { BGMManager, MENU_KEYS } from "./BGMManager.js"
 import { 
   REQUIRED_INSTRUMENTS, 
   NOTE_COLLECTIBLE, 
@@ -159,7 +159,7 @@ export class LevelDesignerScene extends Phaser.Scene {
     if (this.returnFromTest) {
       this.restoreFromRegistry()
       // Restart dev-mode music that was interrupted by the test scene
-      BGMManager.playMenuMusic(this, "developer_menu")
+      BGMManager.playMenuMusic(this, MENU_KEYS.DEV_MODE)
     } else if (this.loadLevelId) {
       this.loadSavedLevel(this.loadLevelId)
     } else if (this.loadBuiltinKey) {
@@ -3445,7 +3445,7 @@ export class LevelDesignerScene extends Phaser.Scene {
       // Stop audition if one is playing, then restore dev-mode music
       if (BGMManager.currentAudioKey?.startsWith("audition_")) {
         BGMManager.stop()
-        BGMManager.playMenuMusic(this, "developer_menu")
+        BGMManager.playMenuMusic(this, MENU_KEYS.DEV_MODE)
       }
       // Clean up wheel listener
       this.input.off("wheel", wheelHandler)
@@ -3933,7 +3933,7 @@ export class LevelDesignerScene extends Phaser.Scene {
       this.sound.play("ui_select_sound", { volume: 0.2 })
       BGMManager.stop()
       // Restore dev-mode music after stopping the audition
-      BGMManager.playMenuMusic(this, "developer_menu")
+      BGMManager.playMenuMusic(this, MENU_KEYS.DEV_MODE)
     })
     stopAuditionBtn.on("pointerover", () => stopAuditionBtn.setColor("#ffffff"))
     stopAuditionBtn.on("pointerout", () => stopAuditionBtn.setColor("#ffaa00"))
@@ -3959,7 +3959,7 @@ export class LevelDesignerScene extends Phaser.Scene {
       this.updateUnsavedIndicator()
       BGMManager.stop()
       // Restore dev-mode music after clearing
-      BGMManager.playMenuMusic(this, "developer_menu")
+      BGMManager.playMenuMusic(this, MENU_KEYS.DEV_MODE)
     })
     clearTrackBtn.on("pointerover", () => clearTrackBtn.setColor("#ffffff"))
     clearTrackBtn.on("pointerout", () => clearTrackBtn.setColor("#ff6666"))

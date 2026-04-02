@@ -4,7 +4,7 @@ import { MusicFragment, LevelGoal, SpeedRunStopwatch } from "./MusicFragment.js"
 import { getMergedControls } from "./MobileControlsScene.js"
 import { WorldManager } from "./WorldManager.js"
 import { PlatformRenderer } from "./PlatformRenderer.js"
-import { BGMManager } from "./BGMManager.js"
+import { BGMManager, MENU_KEYS } from "./BGMManager.js"
 import { SupabaseMusicManager } from "./SupabaseMusicManager.js"
 
 /**
@@ -947,8 +947,10 @@ export class CustomLevelTestScene extends Phaser.Scene {
     // Clean up event listeners
     this.events.off("stopwatchCollected", this.onStopwatchCollected, this)
     
-    // Stop any music before returning
-    BGMManager.stop()
+    // Stop music only if we're NOT in dev mode (dev music should carry through to designer)
+    if (this.testMusicMode !== "dev") {
+      BGMManager.stop()
+    }
     
     // Return to designer with flag to restore state
     this.scene.start("LevelDesignerScene", { returnFromTest: true })
@@ -1133,7 +1135,7 @@ export class CustomLevelTestScene extends Phaser.Scene {
         // Dev-mode music should be kept playing uninterrupted.
         // Only restart it if something stopped it externally.
         if (!BGMManager.isPlaying() && !BGMManager.isPaused()) {
-          await BGMManager.playMenuMusic(this, "developer_menu")
+          await BGMManager.playMenuMusic(this, MENU_KEYS.DEV_MODE)
         }
         break
       case "assigned":
