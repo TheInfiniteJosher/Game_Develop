@@ -5167,16 +5167,53 @@ export class LevelDesignerScene extends Phaser.Scene {
       const y = obj.y * gridSize
       const width = obj.width * gridSize
       const height = obj.height * gridSize
+      const tileW = obj.width || 1
+      const tileH = obj.height || 1
       
       switch (obj.type) {
         case "platform":
           worldLevelData.platforms.push({ x, y, width, height, type: "solid" })
           break
         case "spike":
-          worldLevelData.hazards.push({ type: "spike", x, y })
+          // Expand multi-tile spike blocks into individual per-tile entries
+          for (let dy = 0; dy < tileH; dy++) {
+            for (let dx = 0; dx < tileW; dx++) {
+              worldLevelData.hazards.push({ type: "spike", x: x + dx * gridSize, y: y + dy * gridSize })
+            }
+          }
           break
         case "saw":
-          worldLevelData.hazards.push({ type: "saw", x, y })
+          // Expand multi-tile saw blocks into individual per-tile entries
+          for (let dy = 0; dy < tileH; dy++) {
+            for (let dx = 0; dx < tileW; dx++) {
+              worldLevelData.hazards.push({ type: "saw", x: x + dx * gridSize, y: y + dy * gridSize })
+            }
+          }
+          break
+        case "saw_h":
+          for (let dy = 0; dy < tileH; dy++) {
+            for (let dx = 0; dx < tileW; dx++) {
+              worldLevelData.hazards.push({ type: "saw_h", x: x + dx * gridSize, y: y + dy * gridSize, movement: obj.movement || { type: "horizontal", distance: 3, speed: 2000 } })
+            }
+          }
+          break
+        case "saw_v":
+          for (let dy = 0; dy < tileH; dy++) {
+            for (let dx = 0; dx < tileW; dx++) {
+              worldLevelData.hazards.push({ type: "saw_v", x: x + dx * gridSize, y: y + dy * gridSize, movement: obj.movement || { type: "vertical", distance: 3, speed: 2000 } })
+            }
+          }
+          break
+        case "saw_c":
+          for (let dy = 0; dy < tileH; dy++) {
+            for (let dx = 0; dx < tileW; dx++) {
+              worldLevelData.hazards.push({ type: "saw_c", x: x + dx * gridSize, y: y + dy * gridSize, movement: obj.movement || { type: "circular", distance: 2, speed: 2000 } })
+            }
+          }
+          break
+        case "cables":
+          // Save cables as slow-zone hazards
+          worldLevelData.hazards.push({ type: "cables", x, y, width, height })
           break
         case "spawn":
           worldLevelData.spawn = { x, y, facingDirection: obj.facingDirection || "right" }
@@ -5225,6 +5262,13 @@ export class LevelDesignerScene extends Phaser.Scene {
           break
       }
     })
+    
+    // Apply current editor style settings (may differ from cached DB values)
+    worldLevelData.styleWorld = this.styleWorld ?? worldLevelData.styleWorld ?? null
+    worldLevelData.stylePreset = this.stylePreset || worldLevelData.stylePreset || "auto"
+    worldLevelData.backgroundContrast = this.backgroundContrast ?? worldLevelData.backgroundContrast ?? 1.0
+    worldLevelData.backgroundBrightness = this.backgroundBrightness ?? worldLevelData.backgroundBrightness ?? 1.0
+    worldLevelData.useWorldBackgroundSettings = this.useWorldBackgroundSettings ?? worldLevelData.useWorldBackgroundSettings ?? true
     
     // PUBLISH the level to Supabase database
     this.statusText.setText(`Publishing ${this.currentLevelTitle} to database...`)
@@ -5523,14 +5567,28 @@ export class LevelDesignerScene extends Phaser.Scene {
           console.warn('[LevelDesigner] Skipping hazard with invalid coordinates:', hazard)
           return
         }
-        const hazardType = hazard.type === "spike" ? "spike" : "saw"
-        objects.push({
+        // Map DB type to editor type, preserving saw subtypes and cables
+        let hazardType
+        switch (hazard.type) {
+          case "spike": hazardType = "spike"; break
+          case "saw_h": hazardType = "saw_h"; break
+          case "saw_v": hazardType = "saw_v"; break
+          case "saw_c": hazardType = "saw_c"; break
+          case "cables": hazardType = "cables"; break
+          default: hazardType = "saw"; break
+        }
+        const obj = {
           type: hazardType,
           x: Math.floor(hazard.x / gridSize),
           y: Math.floor(hazard.y / gridSize),
-          width: 1,
-          height: 1
-        })
+          width: hazard.width ? Math.ceil(hazard.width / gridSize) : 1,
+          height: hazard.height ? Math.ceil(hazard.height / gridSize) : 1
+        }
+        // Preserve movement data for moving saws
+        if (hazard.movement) {
+          obj.movement = hazard.movement
+        }
+        objects.push(obj)
       })
     }
     
