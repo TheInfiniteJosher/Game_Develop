@@ -6,6 +6,7 @@ import { WorldManager } from "./WorldManager.js"
 import { PlatformRenderer } from "./PlatformRenderer.js"
 import { BGMManager, MENU_KEYS } from "./BGMManager.js"
 import { SupabaseMusicManager } from "./SupabaseMusicManager.js"
+import { GamepadManager } from "./GamepadManager.js"
 
 /**
  * CustomLevelTestScene - Test custom levels created in the Level Designer
@@ -735,10 +736,23 @@ export class CustomLevelTestScene extends Phaser.Scene {
     }
 
     // R to restart level (full restart clears saved position AND shifted spawn)
-    this.input.keyboard.on("keydown-R", () => {
+    const doRestart = () => {
       this.registry.set("testPlayerState", null)
       this.registry.set("shiftedSpawnPoint", null)
       this.scene.restart()
+    }
+    this.input.keyboard.on("keydown-R", doRestart)
+
+    // Gamepad "select" button (mapped to R) — directly handled here because
+    // simulated key events can be missed when the player is in a dead state
+    this._gamepadRestartHandler = ({ action }) => {
+      if (action === "select") doRestart()
+    }
+    GamepadManager.on("buttondown", this._gamepadRestartHandler)
+
+    // Clean up gamepad listener when the scene shuts down
+    this.events.once("shutdown", () => {
+      GamepadManager.off("buttondown", this._gamepadRestartHandler)
     })
 
     // "/" to respawn at current spawn point (shifted or original)
