@@ -167,6 +167,10 @@ async function updateLevelIndex(levelId, fileName, exportName) {
 // https://vite.dev/config/
 export default defineConfig({
   base: "/game/",
+  build: {
+    outDir: path.resolve(path.dirname(new URL(import.meta.url).pathname), "dist/public"),
+    emptyOutDir: true,
+  },
   server: {
     host: "0.0.0.0",
     port: parseInt(process.env.PORT) || 26037,
