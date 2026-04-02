@@ -1,0 +1,208 @@
+{
+  "screenSize": {
+    "width": {
+      "value": 1152,
+      "type": "number",
+      "description": "Screen width"
+    },
+    "height": {
+      "value": 768,
+      "type": "number",
+      "description": "Screen height"
+    }
+  },
+  "adConfig": {
+    "showInterstitialAds": {
+      "value": true,
+      "type": "boolean",
+      "description": "Show interstitial ads between levels"
+    },
+    "holeInOneEnabled": {
+      "value": true,
+      "type": "boolean",
+      "description": "Enable hole-in-one (no deaths) ad-skip credit reward"
+    },
+    "speedrunEnabled": {
+      "value": true,
+      "type": "boolean",
+      "description": "Enable speedrun ad-skip credit reward"
+    },
+    "adSkipCreditsPerReward": {
+      "value": 1,
+      "type": "number",
+      "description": "Number of ad-skip credits awarded per achievement"
+    }
+  },
+  "speedrunTargets": {
+    "Level1Scene": {
+      "value": 45,
+      "type": "number",
+      "description": "Target time in seconds to beat for Level 1"
+    },
+    "Level2Scene": {
+      "value": 60,
+      "type": "number",
+      "description": "Target time in seconds to beat for Level 2"
+    },
+    "Level3Scene": {
+      "value": 50,
+      "type": "number",
+      "description": "Target time in seconds to beat for Level 3"
+    },
+    "Level4Scene": {
+      "value": 70,
+      "type": "number",
+      "description": "Target time in seconds to beat for Level 4"
+    },
+    "Level5Scene": {
+      "value": 90,
+      "type": "number",
+      "description": "Target time in seconds to beat for Level 5"
+    },
+    "Level6Scene": {
+      "value": 80,
+      "type": "number",
+      "description": "Target time in seconds to beat for Level 6"
+    },
+    "Level7Scene": {
+      "value": 100,
+      "type": "number",
+      "description": "Target time in seconds to beat for Level 7"
+    },
+    "Level8Scene": {
+      "value": 90,
+      "type": "number",
+      "description": "Target time in seconds to beat for Level 8"
+    },
+    "Level9Scene": {
+      "value": 120,
+      "type": "number",
+      "description": "Target time in seconds to beat for Level 9"
+    },
+    "Level10Scene": {
+      "value": 100,
+      "type": "number",
+      "description": "Target time in seconds to beat for Level 10"
+    },
+    "Level11Scene": {
+      "value": 150,
+      "type": "number",
+      "description": "Target time in seconds to beat for Level 11"
+    }
+  },
+  "debugConfig": {
+    "debug": {
+      "value": false,
+      "type": "boolean",
+      "description": "Enable debug mode"
+    },
+    "debugShowBody": {
+      "value": false,
+      "type": "boolean",
+      "description": "Show collision bodies"
+    },
+    "debugShowStaticBody": {
+      "value": false,
+      "type": "boolean",
+      "description": "Show static collision bodies"
+    },
+    "debugShowVelocity": {
+      "value": false,
+      "type": "boolean",
+      "description": "Show velocity vectors"
+    }
+  },
+  "renderConfig": {
+    "pixelArt": {
+      "value": true,
+      "type": "boolean",
+      "description": "Enable pixel art rendering"
+    }
+  },
+  "playerConfig": {
+    "walkSpeed": {
+      "value": 320,
+      "type": "number",
+      "description": "Player walk speed - normal movement"
+    },
+    "runSpeed": {
+      "value": 550,
+      "type": "number",
+      "description": "Player run speed - when holding space bar"
+    },
+    "jumpPower": {
+      "value": 620,
+      "type": "number",
+      "description": "Player jump power"
+    },
+    "wallJumpPowerX": {
+      "value": 400,
+      "type": "number",
+      "description": "Horizontal velocity when wall jumping"
+    },
+    "wallJumpPowerY": {
+      "value": 550,
+      "type": "number",
+      "description": "Vertical velocity when wall jumping"
+    },
+    "gravityY": {
+      "value": 1800,
+      "type": "number",
+      "description": "Player gravity - higher for snappier feel"
+    },
+    "wallSlideSpeed": {
+      "value": 150,
+      "type": "number",
+      "description": "Speed when sliding down a wall"
+    },
+    "airAcceleration": {
+      "value": 2000,
+      "type": "number",
+      "description": "Air control acceleration"
+    },
+    "groundFriction": {
+      "value": 0.85,
+      "type": "number",
+      "description": "Ground friction for quick stops"
+    },
+    "coyoteTime": {
+      "value": 80,
+      "type": "number",
+      "description": "Coyote time in ms - allows jump shortly after leaving platform"
+    },
+    "jumpBufferTime": {
+      "value": 100,
+      "type": "number",
+      "description": "Jump buffer time in ms - allows pre-press jump before landing"
+    },
+    "wallJumpGraceTime": {
+      "value": 150,
+      "type": "number",
+      "description": "Time in ms player can still wall jump after leaving wall"
+    },
+    "autoRicochetCooldown": {
+      "value": 80,
+      "type": "number",
+      "description": "Cooldown in ms between auto-ricochet wall jumps (turbo mode) - lower = faster bouncing"
+    }
+  },
+  "levelConfig": {
+    "tileSize": {
+      "value": 64,
+      "type": "number",
+      "description": "Tile size in pixels"
+    },
+    "respawnDelay": {
+      "value": 500,
+      "type": "number",
+      "description": "Delay before respawn after death in ms"
+    }
+  },
+  "musicConfig": {
+    "fragmentTypes": {
+      "value": 4,
+      "type": "number",
+      "description": "Number of different fragment types (drums, bass, guitar, vocals)"
+    }
+  }
+}

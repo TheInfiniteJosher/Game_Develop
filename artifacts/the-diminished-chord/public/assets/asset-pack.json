@@ -1,0 +1,545 @@
+{
+  "fonts": {
+    "files": [
+      {
+        "url": "https://cdn-game-mcp-test.gambo.ai/shared/retro-pixel-arcade.otf.woff2",
+        "type": "font",
+        "key": "RetroPixel",
+        "fontType": "opentype"
+      }
+    ]
+  },
+  "tilemaps": {
+    "files": [
+      {
+        "type": "tilemapTiledJSON",
+        "key": "level_1_cavern",
+        "url": "https://cdn-game-mcp.gambo.ai/ff36b70b-17ed-4989-882e-3416d54ed3d8/tile_maps/level_1_cavern.json"
+      },
+      {
+        "type": "tilemapTiledJSON",
+        "key": "level_2_cavern",
+        "url": "https://cdn-game-mcp.gambo.ai/0fe7b1dc-e178-43de-b702-d91129858b90/tile_maps/level_2_cavern.json"
+      },
+      {
+        "type": "tilemapTiledJSON",
+        "key": "level_3_cavern",
+        "url": "https://cdn-game-mcp.gambo.ai/563c2119-6cba-43fd-981e-6ebdccf79f3c/tile_maps/level_3_cavern.json"
+      },
+      {
+        "type": "tilemapTiledJSON",
+        "key": "level_4_cavern",
+        "url": "https://cdn-game-mcp.gambo.ai/71865cec-ae95-455c-8200-f7bec54e34ac/tile_maps/level_4_cavern.json"
+      },
+      {
+        "type": "tilemapTiledJSON",
+        "key": "level_5_cavern",
+        "url": "https://cdn-game-mcp.gambo.ai/81bf2d4e-87bd-474b-b9bf-a2ffd9aacd56/tile_maps/level_5_cavern.json"
+      },
+      {
+        "type": "tilemapTiledJSON",
+        "key": "level_6_cavern",
+        "url": "https://cdn-game-mcp.gambo.ai/28a9648a-368c-4dda-9250-bb52d6507c51/tile_maps/level_6_cavern.json"
+      },
+      {
+        "type": "tilemapTiledJSON",
+        "key": "level_7_cavern",
+        "url": "https://cdn-game-mcp.gambo.ai/7f593ec7-b459-493d-81dd-1acc216dcb89/tile_maps/level_7_cavern.json"
+      },
+      {
+        "type": "tilemapTiledJSON",
+        "key": "level_8_cavern",
+        "url": "https://cdn-game-mcp.gambo.ai/fe7ccc4d-d908-441a-9814-3b1ad19d6144/tile_maps/level_8_cavern.json"
+      },
+      {
+        "type": "tilemapTiledJSON",
+        "key": "level_9_cavern",
+        "url": "https://cdn-game-mcp.gambo.ai/71241409-0cda-4b2f-8c00-38da05c71af8/tile_maps/level_9_cavern.json"
+      },
+      {
+        "type": "tilemapTiledJSON",
+        "key": "level_10_cavern",
+        "url": "https://cdn-game-mcp.gambo.ai/a7de7758-b6fb-4eb1-a0ee-03733582942f/tile_maps/level_10_cavern.json"
+      },
+      {
+        "type": "tilemapTiledJSON",
+        "key": "level_11_cavern",
+        "url": "https://cdn-game-mcp.gambo.ai/4c801801-2c75-413a-825a-8b56785fcb2d/tile_maps/level_11_cavern.json"
+      }
+    ]
+  },
+  "tilesets": {
+    "files": [
+      {
+        "type": "image",
+        "key": "metroid_cavern_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/6c10cdbe-fec1-4e6f-9d26-e9ef5943af2d/tilesets/metroid_cavern_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "detroit_winter_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/04fd060d-7b7f-49ef-91e3-77664b2a2477/tilesets/detroit_winter_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "berlin_techno_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/cf14958f-3426-4636-8d8e-05173481a818/tilesets/berlin_techno_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "tokyo_neon_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/8b9a8d6e-1fd1-47b8-819e-7c3661fa0e7d/tilesets/tokyo_neon_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "london_punk_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/4d138bfa-d998-4522-9007-116acd56c1d9/tilesets/london_punk_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "festival_outdoor_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/71ea15f2-2ae4-4389-b894-497d31fa93de/tilesets/festival_outdoor_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "reykjavik_ice_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/21a24d27-e435-4d72-83cc-b03d4e6c24d8/tilesets/reykjavik_ice_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "la_studio_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/34adee53-ef8a-4df7-aea5-75daab81d8df/tilesets/la_studio_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "sydney_opera_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/f04178b3-cb55-47f9-8ad7-a0ecb2ba656f/tilesets/sydney_opera_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "nyc_arena_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/1d056c85-00b7-4efb-a8a9-4bb720d8634b/tilesets/nyc_arena_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "corporate_trap_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/39ed305d-9bc1-4640-b6ff-d700a3f29f3c/tilesets/corporate_trap_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "doubt_mirror_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/94b2b442-b127-43e8-9c63-f2c3e9a9820e/tilesets/doubt_mirror_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "time_fracture_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/c1654fe4-d112-4393-b4eb-ac2993ebf8b0/tilesets/time_fracture_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "noise_glitch_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/8102441c-7bb5-4227-be91-572f14efe405/tilesets/noise_glitch_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "clarity_light_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/e1616d3d-e958-41c2-bde0-92cff03c6e09/tilesets/clarity_light_tileset.png"
+      },
+      {
+        "type": "image",
+        "key": "diminished_finale_tileset",
+        "url": "https://cdn-game-mcp.gambo.ai/f1e09bc4-dde7-4f4f-a528-07bf8ab31726/tilesets/diminished_finale_tileset.png"
+      }
+    ]
+  },
+  "backgrounds": {
+    "files": [
+      {
+        "type": "image",
+        "key": "metroid_cavern_background",
+        "url": "https://cdn-game-mcp.gambo.ai/f691dcaa-5429-44a3-8dd3-4d5b2f4d8b8e/images/metroid_cavern_background.png"
+      },
+      {
+        "type": "image",
+        "key": "tokyo_venue_background",
+        "url": "https://cdn-game-mcp.gambo.ai/b4393fa8-0410-4ffa-8437-8df7f276a351/images/tokyo_venue_background.png"
+      },
+      {
+        "type": "image",
+        "key": "detroit_winter_background",
+        "url": "https://cdn-game-mcp.gambo.ai/0dfdadb9-f68e-4a6b-a649-f7d7c687757d/images/detroit_winter_background.png"
+      },
+      {
+        "type": "image",
+        "key": "detroit_world_select_bg",
+        "url": "https://cdn-game-mcp.gambo.ai/6972394f-450e-45f4-a40d-3d48ac186a12/images/detroit_world_select_bg.png"
+      },
+      {
+        "type": "image",
+        "key": "world2_berlin_background",
+        "url": "https://cdn-game-mcp.gambo.ai/cd1b2654-d283-4cca-a439-5510cdc36b64/images/world2_berlin_background.png"
+      },
+      {
+        "type": "image",
+        "key": "world3_tokyo_background",
+        "url": "https://cdn-game-mcp.gambo.ai/0dc52727-08c4-4046-89b8-a05b49135488/images/world3_tokyo_background.png"
+      },
+      {
+        "type": "image",
+        "key": "world4_london_background",
+        "url": "https://cdn-game-mcp.gambo.ai/7c56fa88-4334-4cde-a416-dc3b134db2c6/images/world4_london_background.png"
+      },
+      {
+        "type": "image",
+        "key": "world5_festival_background",
+        "url": "https://cdn-game-mcp.gambo.ai/25ed30a2-8c71-4f47-b404-8c25bf4fe833/images/world5_festival_background.png"
+      },
+      {
+        "type": "image",
+        "key": "world6_reykjavik_background",
+        "url": "https://cdn-game-mcp.gambo.ai/4d088f7f-07e3-4080-8c50-cacd8d522bb6/images/world6_reykjavik_background.png"
+      },
+      {
+        "type": "image",
+        "key": "world7_la_background",
+        "url": "https://cdn-game-mcp.gambo.ai/fd77495f-5e98-49ad-8cf6-9b1d54512319/images/world7_la_background.png"
+      },
+      {
+        "type": "image",
+        "key": "world8_sydney_background",
+        "url": "https://cdn-game-mcp.gambo.ai/42d3ae9a-8e84-4da0-b695-384cd6082584/images/world8_sydney_background.png"
+      },
+      {
+        "type": "image",
+        "key": "world9_nyc_background",
+        "url": "https://cdn-game-mcp.gambo.ai/d08781cf-fad8-4d06-9539-2eb0b0b9c621/images/world9_nyc_background.png"
+      },
+      {
+        "type": "image",
+        "key": "world10_contract_trap_background",
+        "url": "https://cdn-game-mcp.gambo.ai/63e7784c-5709-4fc1-a955-0504ad5f77db/images/world10_contract_trap_background.png"
+      },
+      {
+        "type": "image",
+        "key": "world11_doubt_background",
+        "url": "https://cdn-game-mcp.gambo.ai/71f3d8b2-1167-4646-9a76-9d6d4b3d373b/images/world11_doubt_background.png"
+      },
+      {
+        "type": "image",
+        "key": "world12_time_fracture_background",
+        "url": "https://cdn-game-mcp.gambo.ai/10237b67-9e10-4f25-b84b-b5a4c9168d7c/images/world12_time_fracture_background.png"
+      },
+      {
+        "type": "image",
+        "key": "world13_noise_collapse_background",
+        "url": "https://cdn-game-mcp.gambo.ai/f13daf57-6e74-4079-9354-95859dac29b0/images/world13_noise_collapse_background.png"
+      },
+      {
+        "type": "image",
+        "key": "world14_clarity_background",
+        "url": "https://cdn-game-mcp.gambo.ai/d8c679bb-4c67-4456-9cf5-55eea051b35e/images/world14_clarity_background.png"
+      },
+      {
+        "type": "image",
+        "key": "world15_diminished_chord_background",
+        "url": "https://cdn-game-mcp.gambo.ai/3b487880-d837-4b2f-876d-fd1400cacee0/images/world15_diminished_chord_background.png"
+      }
+    ]
+  },
+  "ui_images": {
+    "files": [
+      {
+        "type": "image",
+        "key": "game_title",
+        "url": "https://cdn-game-mcp.gambo.ai/2db27e68-b9ec-48cb-b250-5daeaf3a9244/images/game_title.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_spaceship",
+        "url": "https://cdn-game-mcp.gambo.ai/a86cfad5-9eab-4703-8c0d-2e45a0d22ca6/images/teddy_spaceship.png"
+      },
+      {
+        "type": "image",
+        "key": "lock_icon",
+        "url": "https://cdn-game-mcp.gambo.ai/1c85708d-00ad-4725-89e0-0d0fb4696ac0/images/lock_icon.png"
+      }
+    ]
+  },
+  "intro_images": {
+    "files": [
+      {
+        "type": "image",
+        "key": "intro_teddy_sunglasses",
+        "url": "https://cdn-game-mcp.gambo.ai/1d163f7e-c875-4052-a542-4c0a73654b3f/images/intro_teddy_sunglasses.png"
+      },
+      {
+        "type": "image",
+        "key": "intro_teddy_removing_glasses",
+        "url": "https://cdn-game-mcp.gambo.ai/fb071e4f-d734-45f3-86fb-64ef888e27c5/images/intro_teddy_removing_glasses.png"
+      },
+      {
+        "type": "image",
+        "key": "intro_teddy_bandana_wrap",
+        "url": "https://cdn-game-mcp.gambo.ai/d4fc2603-dcb8-43d6-aaff-11ba34657671/images/intro_teddy_bandana_wrap.png"
+      },
+      {
+        "type": "image",
+        "key": "intro_teddy_action_pose",
+        "url": "https://cdn-game-mcp.gambo.ai/d90a9b8c-1418-4d98-a79a-9f1c98104d79/images/intro_teddy_action_pose.png"
+      },
+      {
+        "type": "image",
+        "key": "intro_credits_bg",
+        "url": "https://cdn-game-mcp.gambo.ai/8eac86ff-20b1-4d0b-8d09-682a0ce17717/images/intro_credits_bg.png"
+      }
+    ]
+  },
+  "world1_cutscene_images": {
+    "files": [
+      {
+        "type": "image",
+        "key": "detroit_airport_exterior",
+        "url": "https://cdn-game-mcp.gambo.ai/e3b5191a-73e1-4806-81ac-5f24a0f6c6f6/images/detroit_airport_exterior.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_bandmates_welcome",
+        "url": "https://cdn-game-mcp.gambo.ai/1ae47ba0-ced1-4cfa-b589-3f387432fecb/images/teddy_bandmates_welcome.png"
+      },
+      {
+        "type": "image",
+        "key": "tour_bus_pixel",
+        "url": "https://cdn-game-mcp.gambo.ai/e45cb9dc-d12e-4560-843f-4d2da6f9f84c/images/tour_bus_pixel.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_grabbing_guitar",
+        "url": "https://cdn-game-mcp.gambo.ai/663805e0-567e-459a-bd68-a4f23da92531/images/teddy_grabbing_guitar.png"
+      },
+      {
+        "type": "image",
+        "key": "detroit_skyline_night",
+        "url": "https://cdn-game-mcp.gambo.ai/b18c52b1-9991-4f58-a99e-ab3fda88a841/images/detroit_skyline_night.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_spaceship_landing",
+        "url": "https://cdn-game-mcp.gambo.ai/b757cef9-143a-4a34-b60b-e380cc67d0dd/images/teddy_spaceship_landing.png"
+      }
+    ]
+  },
+  "character_images": {
+    "files": [
+      {
+        "type": "image",
+        "key": "teddy_idle_frame1",
+        "url": "https://cdn-game-mcp.gambo.ai/bbb40d64-347e-4c4f-b433-9b3e0c22b11e/animations/teddy_idle_R/frame_1.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_idle_frame2",
+        "url": "https://cdn-game-mcp.gambo.ai/f1a2baec-e9e4-4296-825f-7982c8e19d9c/animations/teddy_idle_R/frame_2.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_run_frame1",
+        "url": "https://cdn-game-mcp.gambo.ai/49a953ef-4179-4eac-9470-53758b300639/animations/teddy_run_R/frame_1.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_run_frame2",
+        "url": "https://cdn-game-mcp.gambo.ai/71f3cef7-2a5a-4ff3-8e37-330c32af19d2/animations/teddy_run_R/frame_2.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_jump_frame1",
+        "url": "https://cdn-game-mcp.gambo.ai/3fe69105-b448-4153-97c3-126744b5af9a/animations/teddy_jump_R/frame_1.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_jump_frame2",
+        "url": "https://cdn-game-mcp.gambo.ai/9cfb492e-272e-48a5-b25f-c7d6dfd4f8c1/animations/teddy_jump_R/frame_2.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_wallslide_frame1",
+        "url": "https://cdn-game-mcp.gambo.ai/276e40c9-5717-4c80-a445-ba569e259b60/animations/teddy_wallslide_R/frame_1.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_wallslide_frame2",
+        "url": "https://cdn-game-mcp.gambo.ai/5b00257e-3474-48da-9909-e18e761b4993/animations/teddy_wallslide_R/frame_2.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_death_frame1",
+        "url": "https://cdn-game-mcp.gambo.ai/d3208e1e-3a1f-4328-abf0-3b2daebbbb6c/animations/teddy_death_R/frame_1.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_death_frame2",
+        "url": "https://cdn-game-mcp.gambo.ai/f9170b42-c40e-42da-9ba1-0142a37d89d6/animations/teddy_death_R/frame_2.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_slide_frame1",
+        "url": "https://cdn-game-mcp.gambo.ai/bdd75870-019c-4429-8b3a-1c558c5e0e80/animations/teddy_slide_R/frame_1.png"
+      },
+      {
+        "type": "image",
+        "key": "teddy_slide_frame2",
+        "url": "https://cdn-game-mcp.gambo.ai/bdd75870-019c-4429-8b3a-1c558c5e0e80/animations/teddy_slide_R/frame_2.png"
+      }
+    ]
+  },
+  "collectibles": {
+    "files": [
+      {
+        "type": "image",
+        "key": "music_fragment_note",
+        "url": "https://cdn-game-mcp.gambo.ai/a75e51c7-4a5f-43e1-b0e0-dd326d574f16/images/music_fragment_note.png"
+      },
+      {
+        "type": "image",
+        "key": "music_fragment_bass",
+        "url": "https://cdn-game-mcp.gambo.ai/faa3c098-ab65-487e-bf72-c7319fbba8ae/images/music_fragment_bass.png"
+      },
+      {
+        "type": "image",
+        "key": "music_fragment_drums",
+        "url": "https://cdn-game-mcp.gambo.ai/aa56f356-693a-4da1-aaaa-6e48665adcb7/images/music_fragment_drums.png"
+      },
+      {
+        "type": "image",
+        "key": "music_fragment_guitar",
+        "url": "https://cdn-game-mcp.gambo.ai/1a3f81de-b51f-451d-b754-1a898909d96d/images/music_fragment_guitar.png"
+      },
+      {
+        "type": "image",
+        "key": "music_fragment_keyboard",
+        "url": "https://cdn-game-mcp.gambo.ai/951f0cc0-ec04-4207-a44c-848aa51fce08/images/music_fragment_keyboard.png"
+      },
+      {
+        "type": "image",
+        "key": "music_fragment_microphone",
+        "url": "https://cdn-game-mcp.gambo.ai/3f34e588-b86b-4f18-a8b2-8bc17b3a08a0/images/music_fragment_microphone.png"
+      },
+      {
+        "type": "image",
+        "key": "collectible_mixtape",
+        "url": "https://cdn-game-mcp.gambo.ai/d84c33d8-6227-4357-a2bc-5041ed91f516/images/collectible_mixtape.png"
+      },
+      {
+        "type": "image",
+        "key": "collectible_cd",
+        "url": "https://cdn-game-mcp.gambo.ai/42355c83-2ac8-44b6-bb62-b49a8c3784fc/images/collectible_cd.png"
+      },
+      {
+        "type": "image",
+        "key": "collectible_vinyl",
+        "url": "https://cdn-game-mcp.gambo.ai/a88df687-2ffd-4d58-a578-95bf9328bb97/images/collectible_vinyl.png"
+      },
+      {
+        "type": "image",
+        "key": "collectible_waveform",
+        "url": "https://cdn-game-mcp.gambo.ai/c0ea6f58-2d3e-4b20-96c9-f07ec11691e0/images/collectible_waveform.png"
+      },
+      {
+        "type": "image",
+        "key": "collectible_record_deal",
+        "url": "https://cdn-game-mcp.gambo.ai/ba2512bb-0a58-4a06-a2b4-a7114bd5c8fc/images/collectible_record_deal.png"
+      },
+      {
+        "type": "image",
+        "key": "collectible_demo_fragment",
+        "url": "https://cdn-game-mcp.gambo.ai/62f0c7fb-710d-4666-a83f-b9ebe95a4687/images/collectible_demo_fragment.png"
+      },
+      {
+        "type": "image",
+        "key": "collectible_metronome",
+        "url": "https://cdn-game-mcp.gambo.ai/4a1f239d-33e4-46f8-b2c0-300e66e4d1e0/images/collectible_metronome.png"
+      }
+    ]
+  },
+  "hazards": {
+    "files": [
+      {
+        "type": "image",
+        "key": "spike_hazard",
+        "url": "https://cdn-game-mcp.gambo.ai/c759eb48-c832-4974-9341-82d758063c54/images/spike_hazard.png"
+      },
+      {
+        "type": "image",
+        "key": "saw_blade_hazard",
+        "url": "https://cdn-game-mcp.gambo.ai/b6f31e26-e4d5-40fb-8914-4c8ec84bde4b/images/saw_blade_hazard.png"
+      }
+    ]
+  },
+  "sound_effects": {
+    "files": [
+      {
+        "type": "audio",
+        "key": "jump_sound",
+        "url": "https://cdn-game-mcp.gambo.ai/33f5d958-00b1-466b-8551-8c1e771506e9/sound_effects/jump_sound.mp3"
+      },
+      {
+        "type": "audio",
+        "key": "walljump_sound",
+        "url": "https://cdn-game-mcp.gambo.ai/9c8009fe-dd83-464d-b388-0b96a65df664/sound_effects/walljump_sound.mp3"
+      },
+      {
+        "type": "audio",
+        "key": "land_sound",
+        "url": "https://cdn-game-mcp.gambo.ai/37a59eb2-d748-4a4d-b740-aa1b898d231b/sound_effects/land_sound.mp3"
+      },
+      {
+        "type": "audio",
+        "key": "death_sound",
+        "url": "https://cdn-game-mcp.gambo.ai/d26a2acb-d088-409c-b7e3-a4fac9c9899d/sound_effects/death_sound.mp3"
+      },
+      {
+        "type": "audio",
+        "key": "collect_fragment_sound",
+        "url": "https://cdn-game-mcp.gambo.ai/b5552a5e-e575-44ce-aa9a-ad5f4e5d1065/sound_effects/collect_fragment_sound.mp3"
+      },
+      {
+        "type": "audio",
+        "key": "level_complete_sound",
+        "url": "https://cdn-game-mcp.gambo.ai/faecb879-4c17-4d8b-a3dd-93ef5e4f9120/sound_effects/level_complete_sound.mp3"
+      },
+      {
+        "type": "audio",
+        "key": "ui_select_sound",
+        "url": "https://cdn-game-mcp.gambo.ai/800d3adf-fdbd-4021-bcd1-f8c57f4340ca/sound_effects/ui_select_sound.mp3"
+      },
+      {
+        "type": "audio",
+        "key": "ui_confirm_sound",
+        "url": "https://cdn-game-mcp.gambo.ai/17a51272-f7b1-4a0e-8573-48f08e8dee83/sound_effects/ui_confirm_sound.mp3"
+      },
+      {
+        "type": "audio",
+        "key": "track_unlock_sound",
+        "url": "https://cdn-game-mcp.gambo.ai/9919b19a-b5a2-4c6e-b6f2-62421af73ab9/sound_effects/track_unlock_sound.mp3"
+      },
+      {
+        "type": "audio",
+        "key": "intro_whoosh",
+        "url": "https://cdn-game-mcp.gambo.ai/933f14ca-ddaf-43dc-90f6-0055212ab0b3/sound_effects/intro_whoosh.mp3"
+      },
+      {
+        "type": "audio",
+        "key": "intro_impact",
+        "url": "https://cdn-game-mcp.gambo.ai/444b9b27-c8dc-47da-b62e-3a2ca05e505a/sound_effects/intro_impact.mp3"
+      }
+    ]
+  },
+  "background_musics": {
+    "files": []
+  },
+  "meta": {
+    "app": "Gambo AI",
+    "version": 2,
+    "showAllFilesInBlocks": false
+  }
+}

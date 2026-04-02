@@ -1,0 +1,24 @@
+{
+  "name": "@workspace/the-diminished-chord",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "format": "prettier --write \"**/*.{js,mjs,cjs}\"",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.95.3",
+    "phaser": "3.87.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.19.0",
+    "eslint": "^9.19.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.5.3",
+    "vite": "^6.2.6"
+  }
+}

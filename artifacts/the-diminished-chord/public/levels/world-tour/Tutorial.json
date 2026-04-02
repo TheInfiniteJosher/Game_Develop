@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "metadata": {
+    "name": "Tutorial",
+    "description": "Learn the basics of running, jumping, and wall jumping",
+    "difficulty": "Tutorial",
+    "author": "The Diminished Chord",
+    "created": 1704067200000,
+    "modified": 1704067200000
+  },
+  "settings": {
+    "width": 1920,
+    "height": 768,
+    "tileSize": 32,
+    "gravity": 1200,
+    "backgroundColor": "#1a1a2e",
+    "musicTrackId": null,
+    "timeLimit": null,
+    "parTime": null
+  },
+  "spawn": {
+    "x": 100,
+    "y": 600
+  },
+  "goal": {
+    "x": 1800,
+    "y": 600,
+    "width": 64,
+    "height": 64
+  },
+  "layers": {
+    "background": [],
+    "terrain": [],
+    "hazards": [],
+    "decoration": [],
+    "foreground": []
+  },
+  "platforms": [
+    { "x": 0, "y": 700, "width": 400, "height": 32, "type": "solid" },
+    { "x": 500, "y": 650, "width": 200, "height": 32, "type": "solid" },
+    { "x": 800, "y": 600, "width": 200, "height": 32, "type": "solid" },
+    { "x": 1100, "y": 550, "width": 200, "height": 32, "type": "solid" },
+    { "x": 1400, "y": 500, "width": 200, "height": 32, "type": "solid" },
+    { "x": 1600, "y": 700, "width": 300, "height": 32, "type": "solid" }
+  ],
+  "hazards": [],
+  "movingPlatforms": [],
+  "fragments": [
+    { "x": 250, "y": 650, "type": "intro_riff" },
+    { "x": 600, "y": 600, "type": "verse_stem" },
+    { "x": 900, "y": 550, "type": "chorus_hook" },
+    { "x": 1200, "y": 500, "type": "drum_fill" }
+  ],
+  "checkpoints": [],
+  "objects": [],
+  "enemies": [],
+  "triggers": [
+    { "x": 50, "y": 600, "width": 100, "height": 200, "type": "tutorial_text", "message": "Use ARROW KEYS to move" },
+    { "x": 450, "y": 600, "width": 100, "height": 200, "type": "tutorial_text", "message": "Press SPACE to jump" },
+    { "x": 1050, "y": 500, "width": 100, "height": 200, "type": "tutorial_text", "message": "Jump against walls to WALL JUMP" }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "description": "Default track assignments for The Diminished Chord. Edit this file to set default music for all users.",
+  "instructions": {
+    "howToUse": "Add your S3/CDN URLs to the appropriate keys below. These will be loaded on game start for all users.",
+    "menuMusic": "Keys like 'intro', 'main_menu', 'world_1' etc. control which music plays on menus and world select screens.",
+    "levelTracks": "Keys like 'track_W1L1', 'track_W1BOSS' etc. control music for individual levels.",
+    "exporting": "You can export your current assignments from the Track Uploader scene's Export button."
+  },
+  "menuMusic": {
+    "intro": null,
+    "main_menu": null,
+    "dev_mode": null,
+    "music_library": null,
+    "universe_select": null,
+    "world_1": null,
+    "world_2": null,
+    "world_3": null,
+    "world_4": null,
+    "world_5": null,
+    "world_6": null,
+    "world_7": null,
+    "world_8": null,
+    "world_9": null,
+    "world_10": null,
+    "world_11": null,
+    "world_12": null,
+    "world_13": null,
+    "world_14": null,
+    "world_15": null
+  },
+  "levelTracks": {
+  },
+  "trackMetadata": {
+  }
+}

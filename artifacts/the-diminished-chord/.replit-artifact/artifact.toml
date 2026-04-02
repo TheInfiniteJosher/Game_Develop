@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/game/"
+title = "The Diminished Chord"
+version = "1.0.0"
+id = "artifacts/the-diminished-chord"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/game/" ]
+localPort = 26037
+
+[services.development]
+run = "pnpm --filter @workspace/the-diminished-chord run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/the-diminished-chord", "run", "build" ]
+publicDir = "artifacts/the-diminished-chord/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "26037"
+BASE_PATH = "/game/"
