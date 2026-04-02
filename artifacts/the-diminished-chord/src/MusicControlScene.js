@@ -121,12 +121,15 @@ export class MusicControlScene extends Phaser.Scene {
   _buildNowPlayingPanel(W, H) {
     const panelW = 280
     const panelH = 52
-    const panelX = 16
-    // Start off-screen below the bottom edge; slides up into view
-    const panelYHidden = H + panelH + 10
-    const panelYVisible = H - 16 - panelH
+    const padding = 20
+    const btnSize = 40
+    // Right-align next to the mute button (button right edge = W - padding)
+    const panelXVisible = W - padding - btnSize - 10 - panelW
+    const panelXHidden  = W + panelW + 10          // off-screen to the right
+    // Vertically centred with the mute button
+    const panelY = H - padding - btnSize / 2 - panelH / 2
 
-    this._npContainer = this.add.container(panelX, panelYHidden)
+    this._npContainer = this.add.container(panelXHidden, panelY)
       .setDepth(210)
       .setScrollFactor(0)
       .setAlpha(0)
@@ -173,9 +176,9 @@ export class MusicControlScene extends Phaser.Scene {
     })
     this._npContainer.add(this._npArtist)
 
-    // Store y positions for animation
-    this._npYHidden = panelYHidden
-    this._npYVisible = panelYVisible
+    // Store x positions for slide-in animation (slides from right edge)
+    this._npXHidden  = panelXHidden
+    this._npXVisible = panelXVisible
   }
 
   // Poll BGMManager state — catches tracks that were already playing when this
@@ -213,20 +216,20 @@ export class MusicControlScene extends Phaser.Scene {
       this._nowPlayingHideTimer = null
     }
 
-    // Slide up + fade in
-    this._npContainer.setY(this._npYHidden).setAlpha(0)
+    // Slide in from the right + fade in
+    this._npContainer.setX(this._npXHidden).setAlpha(0)
     this._nowPlayingTween = this.tweens.add({
       targets: this._npContainer,
-      y: this._npYVisible,
+      x: this._npXVisible,
       alpha: 1,
       duration: 400,
       ease: "Back.Out",
       onComplete: () => {
-        // Hold for 4 seconds then slide back down
+        // Hold for 4 seconds then slide back out to the right
         this._nowPlayingHideTimer = this.time.delayedCall(4000, () => {
           this._nowPlayingTween = this.tweens.add({
             targets: this._npContainer,
-            y: this._npYHidden,
+            x: this._npXHidden,
             alpha: 0,
             duration: 500,
             ease: "Back.In"

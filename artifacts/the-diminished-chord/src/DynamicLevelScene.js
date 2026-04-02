@@ -956,11 +956,15 @@ export class DynamicLevelScene extends Phaser.Scene {
           height: p.height || 32,
           isPixels: true // Flag to indicate coordinates are already in pixels
         })),
-        // Hazards are already in pixels
+        // Hazards are already in pixels; preserve width/height for multi-tile types (cables)
         hazards: (rawData.hazards || []).map(h => ({
           type: h.type || "spike",
           x: h.x,
           y: h.y,
+          width: h.width,
+          height: h.height,
+          movement: h.movement,
+          slowFactor: h.slowFactor,
           isPixels: true
         })),
         // Fragments are already in pixels
@@ -1437,6 +1441,9 @@ export class DynamicLevelScene extends Phaser.Scene {
   }
 
   createHazard(hazardData) {
+    // Cable hazards are handled separately by createSlowZones() — skip them here
+    if (hazardData.type === "cables" || hazardData.type === "cable" || hazardData.type === "slow_zone") return
+
     // Coordinates are stored as top-left pixel position of the tile
     // Center hazard horizontally, position at floor level vertically
     const x = hazardData.x + this.tileSize / 2
@@ -1520,33 +1527,47 @@ export class DynamicLevelScene extends Phaser.Scene {
   }
   
   /**
-   * Create a single slow zone (cable bundle)
+   * Create slow zone visuals + collision for a cable hazard entry.
+   * Cable entries are stored as one object with pixel width/height covering
+   * multiple tiles; we iterate over every tile cell in that area.
    */
   createSlowZone(cableData) {
-    const x = cableData.x + this.tileSize / 2
-    const y = cableData.y + this.tileSize * 0.5
-
-    // Visual layer — sprite if available, otherwise plain tinted rect
+    const ts = this.tileSize
     const spriteKeys = ["cable_bundle_hazard", "cable_hazard", "cables"]
     const textureKey = spriteKeys.find(k => this.textures.exists(k))
+    const slowFactor = cableData.slowFactor || 0.4
 
-    if (textureKey) {
-      const img = this.add.image(x, y + this.tileSize * 0.12, textureKey)
-      img.setDisplaySize(this.tileSize * 1.35, this.tileSize * 0.55)
-      img.setDepth(5)
-    } else {
-      this.add.rectangle(x, y, this.tileSize, this.tileSize * 0.5, 0x8844aa, 0.55).setDepth(5)
+    // Width and height are in pixels (same coordinate space as x/y after normalisation)
+    const cols = Math.max(1, Math.round((cableData.width  || ts) / ts))
+    const rows = Math.max(1, Math.round((cableData.height || ts) / ts))
+
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        // Centre of this tile cell
+        const cx = cableData.x + (col + 0.5) * ts
+        // Place the sprite at the BOTTOM of the tile so it looks like it's
+        // resting on the ground. Centre-y = top_of_tile + 75% down the tile.
+        const cy = cableData.y + ts * 0.75
+
+        // ── Visual ──
+        if (textureKey) {
+          const jitter = ((col * 7 + row * 13) % 7 - 3) * 0.02
+          const scaleNoise = 1 + ((col * 3 + row * 5) % 5 - 2) * 0.04
+          const img = this.add.image(cx, cy, textureKey)
+          img.setDisplaySize(ts * 1.35 * scaleNoise, ts * 0.55 * scaleNoise)
+          img.setRotation(jitter)
+          img.setDepth(5)
+        } else {
+          this.add.rectangle(cx, cy, ts, ts * 0.5, 0x8844aa, 0.55).setDepth(5)
+        }
+
+        // ── Collision (static body, no gravity) ──
+        const zone = this.add.zone(cx, cableData.y + ts * 0.5, ts * 0.85, ts * 0.7)
+        this.physics.add.existing(zone, true)
+        zone.slowFactor = slowFactor
+        this.slowZones.add(zone)
+      }
     }
-
-    // Collision zone — always static (gravity never applies, immovable by default)
-    const zone = this.add.zone(x, y, this.tileSize * 0.85, this.tileSize * 0.7)
-    this.physics.add.existing(zone, true)   // true = static body
-    zone.body.setSize(this.tileSize * 0.85, this.tileSize * 0.7)
-
-    // Store slow factor on zone for overlap handler
-    zone.slowFactor = cableData.slowFactor || 0.4
-
-    this.slowZones.add(zone)
   }
 
   /**
