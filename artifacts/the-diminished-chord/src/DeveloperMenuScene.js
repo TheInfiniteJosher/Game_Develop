@@ -22,6 +22,14 @@ export class DeveloperMenuScene extends Phaser.Scene {
     // Background - create this FIRST to ensure something is visible
     this.createBackground()
 
+    // Ensure the music overlay is running (may not be if entering dev mode directly)
+    if (!this.scene.isActive("MusicControlScene")) {
+      this.scene.launch("MusicControlScene")
+    } else {
+      // Already running but may be behind other scenes — push it to the front
+      this.scene.bringToTop("MusicControlScene")
+    }
+
     // Play dev mode menu music (if assigned) - wrapped in try/catch
     try {
       BGMManager.setDevMode(true)

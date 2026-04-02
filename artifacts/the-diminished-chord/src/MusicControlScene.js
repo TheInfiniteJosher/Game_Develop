@@ -61,6 +61,9 @@ export class MusicControlScene extends Phaser.Scene {
     // ── Now Playing overlay (bottom-center, NFS-style) ────────────────────
     this._buildNowPlayingPanel(W, H)
 
+    // Bring this scene to the top of the render stack so it overlays everything
+    this.scene.bringToTop()
+
     // Track which audio key we last showed a card for
     this._lastShownKey = null
 
