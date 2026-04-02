@@ -5380,6 +5380,10 @@ export class LevelDesignerScene extends Phaser.Scene {
       this.placeObjectFromData(obj)
     })
 
+    // Restore music track assignment from saved level data
+    this.assignedTrackId = level.data.assignedTrackId || null
+    this.assignedTrackName = level.data.assignedTrackName || null
+
     this.hasUnsavedChanges = false
     this.updateTitleDisplay()
     this.updateUnsavedIndicator()
@@ -5428,6 +5432,17 @@ export class LevelDesignerScene extends Phaser.Scene {
       } else {
         this.statusText.setText(`Editing "${this.currentLevelTitle}" (start from scratch)`)
       }
+    }
+
+    // Look up the track assigned to this builtin level in Supabase —
+    // same data source that normal gameplay uses via BGMManager.playLevelMusic
+    const supabaseAssignment = SupabaseMusicManager.getLevelTrack(levelKey)
+    if (supabaseAssignment && supabaseAssignment.track) {
+      this.assignedTrackId = supabaseAssignment.trackId
+      this.assignedTrackName = supabaseAssignment.track.name || null
+    } else {
+      this.assignedTrackId = null
+      this.assignedTrackName = null
     }
 
     this.hasUnsavedChanges = false
@@ -5510,6 +5525,16 @@ export class LevelDesignerScene extends Phaser.Scene {
       this.statusText.setText(`Editing "${this.currentLevelTitle}" (blank template)`)
     }
     
+    // Look up the track assigned to this level in Supabase (same as normal gameplay)
+    const supabaseAssignment = SupabaseMusicManager.getLevelTrack(levelId)
+    if (supabaseAssignment && supabaseAssignment.track) {
+      this.assignedTrackId = supabaseAssignment.trackId
+      this.assignedTrackName = supabaseAssignment.track.name || null
+    } else {
+      this.assignedTrackId = null
+      this.assignedTrackName = null
+    }
+
     this.hasUnsavedChanges = false
     this.updateTitleDisplay()
     this.updateUnsavedIndicator()
