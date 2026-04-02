@@ -363,12 +363,12 @@ export class LevelDesignerScene extends Phaser.Scene {
         this.setZoom(this.zoomLevel + zoomDelta, mouseGridX, mouseGridY)
       } else {
         // Pan viewport with scroll wheel/trackpad
-        // Scrolling right (positive dx) should move the view right (show content on the right)
-        // Scrolling down (positive dy) should move the view down (show content below)
-        // Subtracting moves the container in the same direction as the scroll gesture
+        // Adding the delta (not subtracting) matches standard non-natural-scroll direction:
+        // scroll right → see content to the right (viewportX increases)
+        // scroll down  → see content below      (viewportY increases)
         const scale = this.getDisplayScale()
-        this.viewportX -= dx / scale
-        this.viewportY -= dy / scale
+        this.viewportX += dx / scale
+        this.viewportY += dy / scale
         this.clampViewport()
         this.rebuildGridViewport()
       }
@@ -948,12 +948,11 @@ export class LevelDesignerScene extends Phaser.Scene {
     this.gridZone.on("pointerup", () => this.onGridRelease())
     
     // Mouse wheel/trackpad scroll for panning (not zooming)
-    // Use +/- keys or pinch gesture for zooming instead
+    // Negate deltas so scroll direction matches standard (non-natural-scroll) trackpad behaviour:
+    // scroll right → see content to the right, scroll down → see content below
     this.gridZone.on("wheel", (pointer, dx, dy, dz) => {
-      // dx = horizontal scroll, dy = vertical scroll
-      // Negative delta = scroll up/left (pan down/right in viewport terms)
-      const panSpeed = 1.5 // Adjust sensitivity
-      this.panViewport(dx * panSpeed, dy * panSpeed)
+      const panSpeed = 1.5
+      this.panViewport(-dx * panSpeed, -dy * panSpeed)
     })
     
     // Viewport border
