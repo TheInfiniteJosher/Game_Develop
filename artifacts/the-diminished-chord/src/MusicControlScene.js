@@ -61,8 +61,20 @@ export class MusicControlScene extends Phaser.Scene {
     // ── Now Playing overlay (bottom-center, NFS-style) ────────────────────
     this._buildNowPlayingPanel(W, H)
 
+    // Track which audio key we last showed a card for
+    this._lastShownKey = null
+
     // Listen for the global bgm-now-playing event emitted by BGMManager
     this.game.events.on("bgm-now-playing", this._onNowPlaying, this)
+
+    // Also poll every 500 ms so we catch music that started before this scene
+    // was created, or tracks that continued playing without being restarted
+    this.time.addEvent({
+      delay: 500,
+      callback: this._pollBGM,
+      callbackScope: this,
+      loop: true
+    })
 
     // Clean up listener when this scene is destroyed
     this.events.once("destroy", () => {
@@ -161,6 +173,24 @@ export class MusicControlScene extends Phaser.Scene {
     // Store y positions for animation
     this._npYHidden = panelYHidden
     this._npYVisible = panelYVisible
+  }
+
+  // Poll BGMManager state — catches tracks that were already playing when this
+  // scene started, and tracks whose key changed without a fresh startPlayback call
+  _pollBGM() {
+    const key = BGMManager.currentAudioKey
+    const meta = BGMManager.currentTrackMeta
+
+    // Only trigger if the key changed AND we have displayable metadata
+    if (key && key !== this._lastShownKey && meta && (meta.title || meta.artist)) {
+      this._lastShownKey = key
+      this._onNowPlaying(meta)
+    }
+
+    // Reset tracker when nothing is playing so the next track always shows
+    if (!key) {
+      this._lastShownKey = null
+    }
   }
 
   _onNowPlaying({ title, artist }) {
