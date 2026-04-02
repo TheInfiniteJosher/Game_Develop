@@ -1535,7 +1535,7 @@ export class DynamicLevelScene extends Phaser.Scene {
     const ts = this.tileSize
     const spriteKeys = ["cable_bundle_hazard", "cable_hazard", "cables"]
     const textureKey = spriteKeys.find(k => this.textures.exists(k))
-    const slowFactor = cableData.slowFactor || 0.4
+    const slowFactor = cableData.slowFactor || 0.2   // 80% speed reduction by default
 
     // Width and height are in pixels (same coordinate space as x/y after normalisation)
     const cols = Math.max(1, Math.round((cableData.width  || ts) / ts))
@@ -1543,26 +1543,29 @@ export class DynamicLevelScene extends Phaser.Scene {
 
     for (let row = 0; row < rows; row++) {
       for (let col = 0; col < cols; col++) {
-        // Centre of this tile cell
+        // Horizontal centre of this tile cell
         const cx = cableData.x + (col + 0.5) * ts
-        // Place the sprite at the BOTTOM of the tile so it looks like it's
-        // resting on the ground. Centre-y = top_of_tile + 75% down the tile.
-        const cy = cableData.y + ts * 0.75
+        // Bottom of this cable tile = top of the platform below it; anchor sprite here
+        const floorY = cableData.y + (row + 1) * ts
 
         // ── Visual ──
         if (textureKey) {
           const jitter = ((col * 7 + row * 13) % 7 - 3) * 0.02
           const scaleNoise = 1 + ((col * 3 + row * 5) % 5 - 2) * 0.04
-          const img = this.add.image(cx, cy, textureKey)
-          img.setDisplaySize(ts * 1.35 * scaleNoise, ts * 0.55 * scaleNoise)
+          const img = this.add.image(cx, floorY, textureKey)
+          // Origin at bottom-centre so the sprite sits flush on the platform surface
+          img.setOrigin(0.5, 1)
+          img.setDisplaySize(ts * 1.3 * scaleNoise, ts * 0.65 * scaleNoise)
           img.setRotation(jitter)
           img.setDepth(5)
         } else {
-          this.add.rectangle(cx, cy, ts, ts * 0.5, 0x8844aa, 0.55).setDepth(5)
+          // Fallback rect — bottom edge at floorY
+          this.add.rectangle(cx, floorY - ts * 0.3, ts, ts * 0.6, 0x8844aa, 0.55).setDepth(5)
         }
 
-        // ── Collision (static body, no gravity) ──
-        const zone = this.add.zone(cx, cableData.y + ts * 0.5, ts * 0.85, ts * 0.7)
+        // ── Collision zone — static body centred in the lower half of the tile ──
+        const zoneCY = cableData.y + (row + 0.65) * ts
+        const zone = this.add.zone(cx, zoneCY, ts * 0.9, ts * 0.7)
         this.physics.add.existing(zone, true)
         zone.slowFactor = slowFactor
         this.slowZones.add(zone)

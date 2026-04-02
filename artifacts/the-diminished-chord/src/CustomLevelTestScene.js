@@ -498,12 +498,13 @@ export class CustomLevelTestScene extends Phaser.Scene {
       this.player,
       this.slowZones,
       (player, zone) => {
+        const factor = zone.slowFactor ?? 0.2
         if (!player.inSlowZone) {
           player.inSlowZone = true
           player.originalWalkSpeed = player.walkSpeed
           player.originalRunSpeed = player.runSpeed || player.walkSpeed * 1.5
-          player.walkSpeed = player.originalWalkSpeed * 0.4  // 40% speed
-          player.runSpeed = player.originalRunSpeed * 0.4
+          player.walkSpeed = player.originalWalkSpeed * factor
+          player.runSpeed = player.originalRunSpeed * factor
         }
         player.slowZoneTimer = 100  // Reset timer while overlapping
       },
@@ -550,31 +551,32 @@ export class CustomLevelTestScene extends Phaser.Scene {
   createCables(obj) {
     const hasCableSprite = this.textures.exists("cable_bundle_hazard")
 
+    const ts = this.tileSize
     for (let i = 0; i < obj.width; i++) {
       for (let j = 0; j < obj.height; j++) {
-        const x = (obj.x + i + 0.5) * this.tileSize
-        const y = (obj.y + j + 0.5) * this.tileSize
+        // Horizontal centre; vertical bottom of this tile cell
+        const cx = (obj.x + i + 0.5) * ts
+        const floorY = (obj.y + j + 1) * ts  // bottom of tile = sits on platform surface
 
         if (hasCableSprite) {
-          // Use generated sprite — wide & flat so it looks like cables on the ground
-          const tileW = this.tileSize * 1.35
-          const tileH = this.tileSize * 0.55
-          // Slight per-cell variation so repeated tiles don't look identical
-          const jitter = ((i * 7 + j * 13) % 7 - 3) * 0.02  // -0.06 … +0.06 rad
-          const scaleNoise = 1 + ((i * 3 + j * 5) % 5 - 2) * 0.04  // 0.92 … 1.08×
-          const img = this.add.image(x, y + this.tileSize * 0.12, "cable_bundle_hazard")
-          img.setDisplaySize(tileW * scaleNoise, tileH * scaleNoise)
+          const jitter = ((i * 7 + j * 13) % 7 - 3) * 0.02
+          const scaleNoise = 1 + ((i * 3 + j * 5) % 5 - 2) * 0.04
+          const img = this.add.image(cx, floorY, "cable_bundle_hazard")
+          // Bottom-centre origin so sprite sits flush on the floor
+          img.setOrigin(0.5, 1)
+          img.setDisplaySize(ts * 1.3 * scaleNoise, ts * 0.65 * scaleNoise)
           img.setRotation(jitter)
           img.setDepth(5)
         } else {
-          // Fallback — plain tinted rectangle (no procedural curves to avoid z-fighting)
-          const rect = this.add.rectangle(x, y, this.tileSize, this.tileSize * 0.5, 0x8844aa, 0.55)
+          const rect = this.add.rectangle(cx, floorY - ts * 0.3, ts, ts * 0.6, 0x8844aa, 0.55)
           rect.setDepth(5)
         }
-        
-        // Create slow zone collider (static body — gravity doesn't apply by definition)
-        const zone = this.add.zone(x, y, this.tileSize * 0.8, this.tileSize * 0.8)
+
+        // Collision zone centred in the lower portion of the tile
+        const zoneCY = (obj.y + j + 0.65) * ts
+        const zone = this.add.zone(cx, zoneCY, ts * 0.9, ts * 0.7)
         this.physics.add.existing(zone, true)
+        zone.slowFactor = 0.2  // 80% speed reduction
         this.slowZones.add(zone)
       }
     }
