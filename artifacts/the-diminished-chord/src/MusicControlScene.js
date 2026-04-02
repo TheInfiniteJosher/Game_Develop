@@ -106,7 +106,7 @@ export class MusicControlScene extends Phaser.Scene {
   _buildNowPlayingPanel(W, H) {
     const panelW = 280
     const panelH = 52
-    const panelX = W / 2 - panelW / 2
+    const panelX = 16
     // Start off-screen below the bottom edge; slides up into view
     const panelYHidden = H + panelH + 10
     const panelYVisible = H - 16 - panelH
