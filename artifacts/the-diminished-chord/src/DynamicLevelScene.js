@@ -1523,53 +1523,29 @@ export class DynamicLevelScene extends Phaser.Scene {
    * Create a single slow zone (cable bundle)
    */
   createSlowZone(cableData) {
-    // Coordinates are stored as top-left pixel position of the tile
     const x = cableData.x + this.tileSize / 2
-    const y = cableData.y + this.tileSize // Cable sits on tile floor
-    
-    // Try to use cable texture if available
-    let zone
-    if (this.textures.exists("cable_hazard") || this.textures.exists("cables")) {
-      const textureKey = this.textures.exists("cable_hazard") ? "cable_hazard" : "cables"
-      zone = this.physics.add.image(x, y, textureKey)
-      zone.setOrigin(0.5, 1)
-      
-      // Scale to fit tile
-      const targetHeight = this.tileSize * 0.6
-      zone.setScale(targetHeight / zone.height)
+    const y = cableData.y + this.tileSize * 0.5
+
+    // Visual layer — sprite if available, otherwise plain tinted rect
+    const spriteKeys = ["cable_bundle_hazard", "cable_hazard", "cables"]
+    const textureKey = spriteKeys.find(k => this.textures.exists(k))
+
+    if (textureKey) {
+      const img = this.add.image(x, y + this.tileSize * 0.12, textureKey)
+      img.setDisplaySize(this.tileSize * 1.35, this.tileSize * 0.55)
+      img.setDepth(5)
     } else {
-      // Fallback: Create styled rectangle to represent cables
-      zone = this.add.rectangle(x, y - this.tileSize * 0.3, this.tileSize * 0.8, this.tileSize * 0.4, 0x444444, 0.7)
-      zone.setOrigin(0.5, 0.5)
-      this.physics.add.existing(zone, true)
-      
-      // Add visual indicator (wavy lines to represent cables)
-      const graphics = this.add.graphics()
-      graphics.lineStyle(2, 0x222222, 0.8)
-      for (let i = 0; i < 3; i++) {
-        const lineY = y - this.tileSize * 0.1 - i * 8
-        graphics.beginPath()
-        graphics.moveTo(x - 15, lineY)
-        graphics.lineTo(x - 5, lineY - 3)
-        graphics.lineTo(x + 5, lineY + 3)
-        graphics.lineTo(x + 15, lineY)
-        graphics.strokePath()
-      }
+      this.add.rectangle(x, y, this.tileSize, this.tileSize * 0.5, 0x8844aa, 0.55).setDepth(5)
     }
-    
-    // Setup physics body
-    if (zone.body) {
-      zone.body.setAllowGravity(false)
-      zone.body.setImmovable(true)
-      zone.body.setSize(this.tileSize * 0.8, this.tileSize * 0.5)
-    } else {
-      this.physics.add.existing(zone, true)
-      zone.body.setSize(this.tileSize * 0.8, this.tileSize * 0.5)
-    }
-    
-    // Store slow factor on zone
+
+    // Collision zone — always static (gravity never applies, immovable by default)
+    const zone = this.add.zone(x, y, this.tileSize * 0.85, this.tileSize * 0.7)
+    this.physics.add.existing(zone, true)   // true = static body
+    zone.body.setSize(this.tileSize * 0.85, this.tileSize * 0.7)
+
+    // Store slow factor on zone for overlap handler
     zone.slowFactor = cableData.slowFactor || 0.4
-    
+
     this.slowZones.add(zone)
   }
 
