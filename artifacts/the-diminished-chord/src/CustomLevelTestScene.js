@@ -1009,8 +1009,9 @@ export class CustomLevelTestScene extends Phaser.Scene {
    * Allows toggling between: Assigned track, Dev Mode music, or Off
    */
   async setupMusicControls() {
-    // Get test music mode from level data
-    this.testMusicMode = this.levelData?.testMusicMode || "assigned"
+    // Default to "dev" so the dev-mode music keeps playing uninterrupted
+    // "assigned" is an explicit audition choice the user makes
+    this.testMusicMode = this.levelData?.testMusicMode || "dev"
     
     // Create music control UI
     this.createMusicControlUI()
@@ -1127,19 +1128,21 @@ export class CustomLevelTestScene extends Phaser.Scene {
    * Apply the current music mode (play appropriate track or stop)
    */
   async applyMusicMode() {
-    // Stop any current music first
-    BGMManager.stop()
-    
     switch (this.testMusicMode) {
+      case "dev":
+        // Dev-mode music should be kept playing uninterrupted.
+        // Only restart it if something stopped it externally.
+        if (!BGMManager.isPlaying() && !BGMManager.isPaused()) {
+          await BGMManager.playMenuMusic(this, "developer_menu")
+        }
+        break
       case "assigned":
+        // Stop whatever is playing (including dev music) and audition the level track
+        BGMManager.stop()
         await this.playAssignedTrack()
         break
-      case "dev":
-        // Play dev mode music - use menu music or first available track
-        BGMManager.playMenuMusic(this, "developer_menu")
-        break
       case "off":
-        // Music already stopped
+        BGMManager.stop()
         break
     }
   }

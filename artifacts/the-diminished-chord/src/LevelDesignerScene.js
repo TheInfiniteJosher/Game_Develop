@@ -158,6 +158,8 @@ export class LevelDesignerScene extends Phaser.Scene {
     // Check if we should restore previous state
     if (this.returnFromTest) {
       this.restoreFromRegistry()
+      // Restart dev-mode music that was interrupted by the test scene
+      BGMManager.playMenuMusic(this, "developer_menu")
     } else if (this.loadLevelId) {
       this.loadSavedLevel(this.loadLevelId)
     } else if (this.loadBuiltinKey) {
@@ -3441,7 +3443,11 @@ export class LevelDesignerScene extends Phaser.Scene {
     closeBtn.on("pointerout", () => closeBtn.setFillStyle(0xffcc00, 0.9))
     closeBtn.on("pointerdown", () => {
       this.sound.play("ui_confirm_sound", { volume: 0.3 })
-      BGMManager.stop()
+      // Stop audition if one is playing, then restore dev-mode music
+      if (BGMManager.currentAudioKey?.startsWith("audition_")) {
+        BGMManager.stop()
+        BGMManager.playMenuMusic(this, "developer_menu")
+      }
       // Clean up wheel listener
       this.input.off("wheel", wheelHandler)
       maskGraphics.destroy()
@@ -3927,6 +3933,8 @@ export class LevelDesignerScene extends Phaser.Scene {
     stopAuditionBtn.on("pointerdown", () => {
       this.sound.play("ui_select_sound", { volume: 0.2 })
       BGMManager.stop()
+      // Restore dev-mode music after stopping the audition
+      BGMManager.playMenuMusic(this, "developer_menu")
     })
     stopAuditionBtn.on("pointerover", () => stopAuditionBtn.setColor("#ffffff"))
     stopAuditionBtn.on("pointerout", () => stopAuditionBtn.setColor("#ffaa00"))
@@ -3951,6 +3959,8 @@ export class LevelDesignerScene extends Phaser.Scene {
       this.hasUnsavedChanges = true
       this.updateUnsavedIndicator()
       BGMManager.stop()
+      // Restore dev-mode music after clearing
+      BGMManager.playMenuMusic(this, "developer_menu")
     })
     clearTrackBtn.on("pointerover", () => clearTrackBtn.setColor("#ffffff"))
     clearTrackBtn.on("pointerout", () => clearTrackBtn.setColor("#ff6666"))
