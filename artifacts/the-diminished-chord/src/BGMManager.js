@@ -12,6 +12,8 @@ class BGMManagerClass {
   constructor() {
     this.currentBgm = null
     this.currentAudioKey = null
+    this.currentAudioUrl = null
+    this.currentTrackMeta = null // { title, artist } for Now Playing display
     this.currentScene = null
     this.currentLevelKey = null // Track which level the music is for
     this.volume = AudioManager.getMusicVolume() // Use AudioManager for initial volume
@@ -59,7 +61,8 @@ class BGMManagerClass {
         const originalVolume = this.volume
         this.volume = volume * AudioManager.getMusicVolume()
         
-        this.playMusic(scene, audioKey, fileUrl, supabaseAssignment.loop !== false)
+        const menuMeta = { title: supabaseAssignment.track.name, artist: supabaseAssignment.track.artist || "" }
+        this.playMusic(scene, audioKey, fileUrl, supabaseAssignment.loop !== false, menuMeta)
         
         // Restore original volume setting
         this.volume = originalVolume
@@ -129,7 +132,8 @@ class BGMManagerClass {
       const originalVolume = this.volume
       this.volume = volume * AudioManager.getMusicVolume()
       
-      this.playMusic(scene, audioKey, supabaseAssignment.track.file_url, supabaseAssignment.loop !== false)
+      const levelMeta = { title: supabaseAssignment.track.name, artist: supabaseAssignment.track.artist || "" }
+      this.playMusic(scene, audioKey, supabaseAssignment.track.file_url, supabaseAssignment.loop !== false, levelMeta)
       this.currentLevelKey = levelKey
       
       // Restore original volume setting
@@ -166,14 +170,20 @@ class BGMManagerClass {
     }
 
     const audioKey = `level_bgm_${levelTrack.id}`
-    this.playMusic(scene, audioKey, levelTrack.audioUrl, true)
+    const localMeta = { title: levelTrack.title || "", artist: levelTrack.artist || "" }
+    this.playMusic(scene, audioKey, levelTrack.audioUrl, true, localMeta)
     this.currentLevelKey = levelKey
   }
 
   /**
    * Core music playback method
+   * @param {Phaser.Scene} scene
+   * @param {string} audioKey
+   * @param {string} audioUrl
+   * @param {boolean} loop
+   * @param {{ title?: string, artist?: string }} [meta] - Optional track metadata for Now Playing display
    */
-  playMusic(scene, audioKey, audioUrl, loop = true) {
+  playMusic(scene, audioKey, audioUrl, loop = true, meta = null) {
     // If same music is already playing, don't restart
     if (this.currentAudioKey === audioKey && this.currentBgm && this.currentBgm.isPlaying) {
       return
@@ -188,12 +198,14 @@ class BGMManagerClass {
     // Stop current music
     this.stop()
 
-    // Store reference to current scene
+    // Store reference to current scene, URL, and metadata
     this.currentScene = scene
+    this.currentAudioUrl = audioUrl
+    this.currentTrackMeta = meta
 
     // Check if audio is already cached
     if (scene.cache.audio.exists(audioKey)) {
-      this.startPlayback(scene, audioKey, loop)
+      this.startPlayback(scene, audioKey, loop, meta)
     } else {
       // Track if this specific file had a load error
       let loadFailed = false
@@ -217,7 +229,7 @@ class BGMManagerClass {
         
         // Only start playback if the file loaded successfully
         if (!loadFailed && scene.cache.audio.exists(audioKey)) {
-          this.startPlayback(scene, audioKey, loop)
+          this.startPlayback(scene, audioKey, loop, meta)
         }
         // Silently continue if music failed - game works fine without it
       })
@@ -228,7 +240,7 @@ class BGMManagerClass {
   /**
    * Start playback of loaded audio
    */
-  startPlayback(scene, audioKey, loop) {
+  startPlayback(scene, audioKey, loop, meta = null) {
     // Double-check the audio exists in cache before playing
     if (!scene.cache.audio.exists(audioKey)) {
       console.error(`[BGMManager] Cannot play audio - key "${audioKey}" not found in cache`)
@@ -244,6 +256,16 @@ class BGMManagerClass {
       this.currentBgm = scene.sound.add(audioKey, { volume: this.volume, loop })
       this.currentBgm.play()
       this.currentAudioKey = audioKey
+      
+      // Emit now-playing event so UI overlays can react
+      if (meta && (meta.title || meta.artist)) {
+        try {
+          scene.game.events.emit("bgm-now-playing", {
+            title: meta.title || "",
+            artist: meta.artist || ""
+          })
+        } catch (e) { /* ignore */ }
+      }
     } catch (error) {
       console.error(`[BGMManager] Error playing audio ${audioKey}:`, error)
       this.currentBgm = null
@@ -260,6 +282,8 @@ class BGMManagerClass {
       this.currentBgm.destroy()
       this.currentBgm = null
       this.currentAudioKey = null
+      this.currentAudioUrl = null
+      this.currentTrackMeta = null
       this.currentLevelKey = null
       this.isDucked = false
     }
