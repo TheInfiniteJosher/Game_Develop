@@ -331,11 +331,14 @@ export function getAllLevelIds() {
 
 /**
  * Get scene key for a level ID
- * All world levels use DynamicLevelScene, which receives the levelId via init data
+ * Boss levels may have dedicated scenes; all others use DynamicLevelScene.
  */
 export function getLevelSceneKey(levelId) {
-  // All levels from the World Tour system use DynamicLevelScene
-  // The levelId is passed via scene.start(key, { levelId }) 
+  // World-specific boss scenes with unique mechanics
+  const bossSceneMap = {
+    "W1BOSS": "BossLevel1Scene",
+  }
+  if (bossSceneMap[levelId]) return bossSceneMap[levelId]
   return "DynamicLevelScene"
 }
 

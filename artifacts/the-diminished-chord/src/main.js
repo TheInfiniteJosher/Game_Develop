@@ -75,6 +75,9 @@ import { BonusUnlock2Scene } from "./BonusUnlock2Scene.js"
 // Cutscene Flow Handler
 import { PostBossCutsceneHandler } from "./PostBossCutsceneHandler.js"
 
+// Boss Level Scenes (dedicated scenes with unique mechanics)
+import { BossLevel1Scene } from "./BossLevel1Scene.js"
+
 // UI Scenes
 import { UIScene } from "./UIScene.js"
 import { GameOverUIScene } from "./GameOverUIScene.js"
@@ -171,6 +174,9 @@ const config = {
     WorldLevelSelectScene,
     DynamicLevelScene,
     TutorialWorldScene,
+
+    // Boss Level Scenes
+    BossLevel1Scene,
     
     // Cutscene System - World Intros
     World1IntroScene,
