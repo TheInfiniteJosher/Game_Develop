@@ -1641,8 +1641,8 @@ export class WorldLevelSelectScene extends Phaser.Scene {
     // Update info panel
     const selected = this.levelButtons[this.selectedLevelIndex]
     if (selected) {
-      // Try to get custom name from LevelDataManager
-      const levelData = LevelDataManager.getLevel(selected.levelId)
+      // Try to get custom name from LevelDataManager (skip for portal node which has no levelId)
+      const levelData = selected.isWorldPortal ? null : LevelDataManager.getLevel(selected.levelId)
       const hasCustomName = levelData?.metadata?.name && 
           levelData.metadata.name !== selected.levelId && 
           !levelData.metadata.name.startsWith("W") &&

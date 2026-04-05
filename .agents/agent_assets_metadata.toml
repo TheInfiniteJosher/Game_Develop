@@ -1,8 +1,61 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "DK7aoSPTuCcl91B38_cms"
 uri = "file://artifacts/the-diminished-chord/public/assets/cable_bundle.png"
 type = "image"
 title = "cable bundle floor hazard"
+
+[[generated]]
+id = "cY9veIupcLsOJmYZVW49K"
+uri = "file://artifacts/the-diminished-chord/public/assets/boss/boss_warehouse_bg.png"
+type = "image"
+title = "boss warehouse background"
+
+[[generated]]
+id = "TVpapiyqmY-SwWaayrNtY"
+uri = "file://artifacts/the-diminished-chord/public/assets/boss/rival_idle_frame1.png"
+type = "image"
+title = "rival band cat idle frame 1"
+
+[[generated]]
+id = "XNGWVNIfD1DqFOlcy0W2s"
+uri = "file://artifacts/the-diminished-chord/public/assets/boss/rival_idle_frame2.png"
+type = "image"
+title = "rival band cat idle frame 2"
+
+[[generated]]
+id = "-H8rF6_pmn83l3zgzl5PZ"
+uri = "file://artifacts/the-diminished-chord/public/assets/boss/rival_run_frame1.png"
+type = "image"
+title = "rival band cat run frame 1"
+
+[[generated]]
+id = "rYaFG44OR66U6A80kdV1i"
+uri = "file://artifacts/the-diminished-chord/public/assets/boss/rival_run_frame2.png"
+type = "image"
+title = "rival band cat run frame 2"
+
+[[generated]]
+id = "5QXF70-lgRFt3oWADi8Md"
+uri = "file://artifacts/the-diminished-chord/public/assets/boss/boss_bottle.png"
+type = "image"
+title = "beer bottle sprite"
+
+[[generated]]
+id = "00-r9h8t4K3tViGHidwwO"
+uri = "file://artifacts/the-diminished-chord/public/assets/boss/boss_crowd.png"
+type = "image"
+title = "punk concert crowd silhouette"
+
+[[generated]]
+id = "cnXLWnTYCkmpBQdmZ7YUa"
+uri = "file://artifacts/the-diminished-chord/public/assets/boss/boss_amplifier.png"
+type = "image"
+title = "punk amplifier stack"
+
+[[outputs]]
+id = "veQlIvuW3pzSc7pGVx1fl"
+uri = "file://artifacts/the-diminished-chord/public/assets/game_title_transparent.png"
+type = "image"
+title = "The Diminished Chord — Logo (Transparent PNG)"

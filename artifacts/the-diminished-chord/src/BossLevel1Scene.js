@@ -73,6 +73,20 @@ export class BossLevel1Scene extends Phaser.Scene {
     this.posterSpots     = []
   }
 
+  // ── preload ───────────────────────────────────────────────────────────────
+  preload() {
+    // Boss-level specific assets (loaded locally so they don't bloat the global preloader)
+    const base = 'assets/boss/'
+    this.load.image('boss_warehouse_bg', `${base}boss_warehouse_bg.png`)
+    this.load.image('boss_crowd',        `${base}boss_crowd.png`)
+    this.load.image('boss_amplifier',    `${base}boss_amplifier.png`)
+    this.load.image('boss_bottle',       `${base}boss_bottle.png`)
+    this.load.image('rival_idle_frame1', `${base}rival_idle_frame1.png`)
+    this.load.image('rival_idle_frame2', `${base}rival_idle_frame2.png`)
+    this.load.image('rival_run_frame1',  `${base}rival_run_frame1.png`)
+    this.load.image('rival_run_frame2',  `${base}rival_run_frame2.png`)
+  }
+
   // ── create ────────────────────────────────────────────────────────────────
   create() {
     const { width, height } = this.cameras.main
@@ -137,99 +151,106 @@ export class BossLevel1Scene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
 
   createBackground() {
-    // Base dark color
-    this.add.rectangle(LEVEL_WIDTH / 2, LEVEL_HEIGHT / 2, LEVEL_WIDTH, LEVEL_HEIGHT, 0x090815)
-
-    const g = this.add.graphics()
-
-    // Ceiling beams (warehouse rafters)
-    g.lineStyle(6, 0x111133, 0.6)
-    for (let bx = 128; bx < LEVEL_WIDTH; bx += 384) {
-      g.moveTo(bx, 0); g.lineTo(bx, 80); g.strokePath()
-    }
-    g.lineStyle(3, 0x0d0d22, 0.4)
-    g.moveTo(0, 80); g.lineTo(LEVEL_WIDTH, 80); g.strokePath()
-
-    // Stage boards texture (Act 1 only)
-    g.lineStyle(1, 0x221100, 0.25)
-    for (let bx = 128; bx < CROWD_START; bx += 24) {
-      g.moveTo(bx, STAGE_Y); g.lineTo(bx, STAGE_Y + STAGE_H)
-    }
-    g.strokePath()
-
-    // Crowd silhouettes (Act 2)
-    const crowd = this.add.graphics()
-    crowd.fillStyle(0x0d0d1a, 1)
-    const rng = Phaser.Math.Between
-    for (let cx = CROWD_START; cx < RACE_START; cx += 24) {
-      const h = 45 + Math.sin(cx * 0.06) * 12 + (cx % 96 === 0 ? 22 : 0)
-      crowd.fillRect(cx, GROUND_Y - h, 18, h)
+    // ── Tiled warehouse background across full level width ──────────────────
+    // Each tile is scaled so the image fills the level height (640px)
+    // Aspect ratio is 16:9 so width ≈ height × (16/9)
+    const bgH  = LEVEL_HEIGHT
+    const bgW  = Math.round(bgH * (16 / 9)) // ~1138px
+    const numTiles = Math.ceil(LEVEL_WIDTH / bgW) + 1
+    for (let t = 0; t < numTiles; t++) {
+      const bg = this.add.image(t * bgW + bgW / 2, LEVEL_HEIGHT / 2, 'boss_warehouse_bg')
+      bg.setDisplaySize(bgW, bgH)
+      bg.setDepth(0)
+      bg.setAlpha(0.88)
     }
 
-    // Venue end-wall backdrop
-    const venue = this.add.graphics()
+    // Dark overlay for readability (keeps pixel art from washing out gameplay)
+    this.add.rectangle(LEVEL_WIDTH / 2, LEVEL_HEIGHT / 2, LEVEL_WIDTH, LEVEL_HEIGHT, 0x00000a, 0.28)
+      .setDepth(1)
+
+    // ── Stage spotlight cones over Act 1 (procedural, rendered on top) ──────
+    const spots = this.add.graphics().setDepth(2)
+    spots.fillStyle(0xffffcc, 0.035)
+    ;[320, 640, 960, 1152].forEach(sx => {
+      spots.fillTriangle(sx, 0, sx - 90, STAGE_Y, sx + 90, STAGE_Y)
+    })
+
+    // ── Stage board grain texture (Act 1 only) ──────────────────────────────
+    const grain = this.add.graphics().setDepth(2)
+    grain.lineStyle(1, 0x221100, 0.22)
+    for (let bx = 128; bx < CROWD_START; bx += 20) {
+      grain.moveTo(bx, STAGE_Y); grain.lineTo(bx, STAGE_Y + STAGE_H)
+    }
+    grain.strokePath()
+
+    // ── Crowd image behind Act 2 crowd area ─────────────────────────────────
+    const crowdW = RACE_START - CROWD_START   // 1408px
+    const crowdX = CROWD_START + crowdW / 2
+    const crowd = this.add.image(crowdX, GROUND_Y, 'boss_crowd')
+    crowd.setDisplaySize(crowdW, 240)
+    crowd.setOrigin(0.5, 1.0)
+    crowd.setDepth(2)
+    crowd.setAlpha(0.72)
+
+    // ── Venue end-wall backdrop ──────────────────────────────────────────────
+    const venue = this.add.graphics().setDepth(2)
     venue.fillStyle(0x0a0025, 0.9)
     venue.fillRect(GOAL_X - 80, 0, 250, LEVEL_HEIGHT)
     venue.lineStyle(4, 0x330066, 0.8)
     venue.strokeRect(GOAL_X - 80, 0, 250, LEVEL_HEIGHT)
-
-    // Stage spotlights (faint triangles, Act 1)
-    const spots = this.add.graphics()
-    spots.fillStyle(0xffffcc, 0.025)
-    ;[320, 640, 960].forEach(sx => {
-      spots.fillTriangle(sx, 0, sx - 80, STAGE_Y, sx + 80, STAGE_Y)
-    })
   }
 
   createDecorations() {
-    const g = this.add.graphics()
+    const g = this.add.graphics().setDepth(5)
 
     // ─ Act 1: Warehouse Stage ─────────────────────────────────────────────
 
     // "BATTLE OF THE BANDS" banner
-    this.add.text(768, 50, "⚡  BATTLE OF THE BANDS  ⚡", {
+    this.add.text(768, 30, "⚡  BATTLE OF THE BANDS  ⚡", {
       fontFamily: "RetroPixel", fontSize: "22px",
       color: "#ff4444", stroke: "#000000", strokeThickness: 4
-    }).setOrigin(0.5)
+    }).setOrigin(0.5).setDepth(5)
 
-    this.add.text(768, 80, "\"The Warehouse\" — Detroit, MI", {
-      fontFamily: "RetroPixel", fontSize: "10px", color: "#555555"
-    }).setOrigin(0.5)
+    this.add.text(768, 60, '"The Warehouse" — Detroit, MI', {
+      fontFamily: "RetroPixel", fontSize: "10px", color: "#888888"
+    }).setOrigin(0.5).setDepth(5)
 
-    // Amplifier stacks (left of stage)
-    for (let ai = 0; ai < 3; ai++) {
-      const ax = 16 + ai * 36
-      g.fillStyle(0x1a1a1a, 1); g.fillRect(ax, 368, 32, 80)
-      g.fillStyle(0x333333, 1); g.fillCircle(ax + 16, 408, 10)
-      g.lineStyle(1, 0x555555, 0.5); g.strokeCircle(ax + 16, 408, 10)
-    }
-
-    // Amplifier stacks (right of stage)
-    for (let ai = 0; ai < 3; ai++) {
-      const ax = 1424 + ai * 36
-      g.fillStyle(0x1a1a1a, 1); g.fillRect(ax, 368, 32, 80)
-      g.fillStyle(0x333333, 1); g.fillCircle(ax + 16, 408, 10)
-      g.lineStyle(1, 0x555555, 0.5); g.strokeCircle(ax + 16, 408, 10)
-    }
-
-    // Hanging cables on stage walls (decorative, approximated with polylines)
-    g.lineStyle(3, 0x665500, 0.5)
-    g.moveTo(128, 300); g.lineTo(175, 380); g.lineTo(255, 436); g.lineTo(320, STAGE_Y); g.strokePath()
-    g.lineStyle(3, 0x443300, 0.5)
-    g.moveTo(128, 340); g.lineTo(200, 415); g.lineTo(278, 442); g.lineTo(320, STAGE_Y); g.strokePath()
-
-    // ─ Act 2: Crowd throws bottles sign ──────────────────────────────────
-    this.add.text(CROWD_START + 200, 60, "🍺 CROWD AREA — WATCH OUT!", {
-      fontFamily: "RetroPixel", fontSize: "12px",
-      color: "#44aa44", stroke: "#000000", strokeThickness: 2
+    // Pixel art amplifier stacks flanking the stage (LEFT)
+    const ampH = 110
+    const ampW = 90
+    const leftAmpPositions = [18, 115, 212]
+    leftAmpPositions.forEach(ax => {
+      const amp = this.add.image(ax + ampW / 2, STAGE_Y - ampH / 2, 'boss_amplifier')
+      amp.setDisplaySize(ampW, ampH)
+      amp.setDepth(4)
     })
 
-    // ─ Venue end-sign ────────────────────────────────────────────────────
-    this.add.text(GOAL_X + 40, 120, "🎸\nSHOWTIME!", {
+    // Pixel art amplifier stacks (RIGHT end of stage)
+    const rightAmpPositions = [1410, 1320]
+    rightAmpPositions.forEach(ax => {
+      const amp = this.add.image(ax + ampW / 2, STAGE_Y - ampH / 2, 'boss_amplifier')
+      amp.setDisplaySize(ampW, ampH)
+      amp.setDepth(4)
+    })
+
+    // Hanging cables (decorative, stage area)
+    g.lineStyle(3, 0x665500, 0.6)
+    g.moveTo(320, 280); g.lineTo(380, 370); g.lineTo(440, 420); g.lineTo(480, STAGE_Y); g.strokePath()
+    g.lineStyle(2, 0x443300, 0.45)
+    g.moveTo(280, 310); g.lineTo(350, 390); g.lineTo(420, 436); g.lineTo(460, STAGE_Y); g.strokePath()
+
+    // ─ Act 2: crowd area sign ────────────────────────────────────────────
+    this.add.text(CROWD_START + 200, 50, "🍺  CROWD AREA — BOTTLES INCOMING!", {
+      fontFamily: "RetroPixel", fontSize: "12px",
+      color: "#ffcc00", stroke: "#000000", strokeThickness: 2
+    }).setDepth(5)
+
+    // ─ Venue finish-line ─────────────────────────────────────────────────
+    this.add.text(GOAL_X + 40, 110, "🎸\nSHOWTIME!", {
       fontFamily: "RetroPixel", fontSize: "20px",
       color: "#ffaa00", stroke: "#000000", strokeThickness: 3,
       align: "center", lineSpacing: 4
-    }).setOrigin(0.5)
+    }).setOrigin(0.5).setDepth(5)
 
     // Venue entrance pillars
     g.fillStyle(0x1a0033, 0.95)
@@ -451,13 +472,56 @@ export class BossLevel1Scene extends Phaser.Scene {
   // ═══════════════════════════════════════════════════════════════════════════
 
   createRivalBand() {
-    this.rival = {
-      x: -260,
-      y: GROUND_Y - 8,
-      speed: RIVAL_BASE_SPEED
+    // ── Create rival animations (only once) ──────────────────────────────
+    if (!this.anims.exists('rival_idle')) {
+      this.anims.create({
+        key: 'rival_idle',
+        frames: [
+          { key: 'rival_idle_frame1' },
+          { key: 'rival_idle_frame2' },
+        ],
+        frameRate: 3,
+        repeat: -1
+      })
+      this.anims.create({
+        key: 'rival_run',
+        frames: [
+          { key: 'rival_run_frame1' },
+          { key: 'rival_run_frame2' },
+        ],
+        frameRate: 8,
+        repeat: -1
+      })
     }
-    // Graphics object for drawing the 3-punk-silhouette chaser
-    this.rivalGfx = this.add.graphics().setDepth(8)
+
+    // ── Rival position tracking object ───────────────────────────────────
+    this.rival = { x: -340, y: GROUND_Y, speed: RIVAL_BASE_SPEED }
+
+    // ── Character height = 1.5 tiles, matching Teddy's scale ────────────
+    const charH = 96  // display height in pixels
+    // The source frames are 3:4 portrait so width ≈ charH * (3/4)
+    const charW = Math.round(charH * 0.72)
+
+    // Member x-offsets: leader in centre, sidemen flanking
+    const memberOffsets = [0, -charW - 6, charW + 6]
+
+    this.rivalSprites = memberOffsets.map((off, i) => {
+      const sprite = this.add.sprite(this.rival.x + off, this.rival.y, 'rival_idle_frame1')
+      sprite.setDisplaySize(charW, charH)
+      sprite.setOrigin(0.5, 1.0)
+      sprite.setDepth(8)
+      // Sidemen slightly darker / smaller
+      if (i > 0) {
+        sprite.setAlpha(0.82)
+        sprite.setDisplaySize(charW * 0.88, charH * 0.88)
+      }
+      sprite.play('rival_idle')
+      sprite._xOffset = off
+      return sprite
+    })
+
+    // Dust cloud graphic (rendered under sprites)
+    this.rivalDust = this.add.graphics().setDepth(7)
   }
 
   updateRivalBand(delta) {
@@ -472,34 +536,22 @@ export class BossLevel1Scene extends Phaser.Scene {
 
     this.rival.x += chaseSpeed * (delta / 1000)
 
-    // Draw rival band
-    this.rivalGfx.clear()
-    const memberOffsets = [-44, 0, 44]
-    memberOffsets.forEach((off, i) => {
-      const mx = this.rival.x + off
-      const my = this.rival.y
-      const col = i === 0 ? 0xff3333 : 0xcc2222
+    // Mirror sprites (face right, since they chase to the right)
+    const isMoving = chaseSpeed > 20
+    const animKey = isMoving ? 'rival_run' : 'rival_idle'
 
-      // Body
-      this.rivalGfx.fillStyle(col, 0.92)
-      this.rivalGfx.fillRect(mx - 11, my - 44, 22, 30)
-      // Head
-      this.rivalGfx.fillCircle(mx, my - 54, 10)
-      // Mohawk
-      this.rivalGfx.fillStyle(0xff6600, 0.9)
-      this.rivalGfx.fillTriangle(mx - 3, my - 64, mx, my - 80, mx + 3, my - 64)
-      // Running legs (phase offset)
-      const legPhase = (Date.now() * 0.02 + i * 2) % (Math.PI * 2)
-      this.rivalGfx.fillStyle(col, 0.92)
-      this.rivalGfx.fillRect(mx - 10, my - 14, 8, 18 + Math.sin(legPhase) * 5)
-      this.rivalGfx.fillRect(mx + 2,  my - 14, 8, 18 + Math.cos(legPhase) * 5)
-      // Instrument arm
-      this.rivalGfx.fillRect(mx + 10, my - 40, 22, 5)
+    this.rivalSprites.forEach(sprite => {
+      sprite.x = this.rival.x + sprite._xOffset
+      sprite.y = this.rival.y
+      if (sprite.anims.currentAnim?.key !== animKey) sprite.play(animKey)
     })
 
-    // Dust cloud behind rival band
-    this.rivalGfx.fillStyle(0x555566, 0.12)
-    this.rivalGfx.fillEllipse(this.rival.x - 80, this.rival.y - 6, 120, 22)
+    // Dust cloud beneath the band when running
+    this.rivalDust.clear()
+    if (isMoving) {
+      this.rivalDust.fillStyle(0x888899, 0.14)
+      this.rivalDust.fillEllipse(this.rival.x - 20, this.rival.y - 4, 160, 24)
+    }
 
     // Check caught condition
     const gap = this.player.x - this.rival.x
@@ -583,33 +635,40 @@ export class BossLevel1Scene extends Phaser.Scene {
     const targetX = px + Phaser.Math.Between(-70, 70)
     const startY  = GROUND_Y + 30
 
-    // Draw bottle (graphics)
-    const g = this.add.graphics()
-    g.fillStyle(0x336622, 0.92)
-    g.fillRect(-4, -18, 8, 18)
-    g.fillRect(-3, -22, 6, 6)
-    g.fillStyle(0x66bb44, 0.4)
-    g.fillRect(-3, -19, 3, 10)
-    g.setPosition(spawnX, startY)
+    // Pixel art bottle sprite, slightly tilted on spawn
+    const g = this.add.image(spawnX, startY, 'boss_bottle')
+    g.setDisplaySize(28, 44)
     g.setDepth(12)
+    g.setAngle(Phaser.Math.Between(-20, 20))
 
-    const arc = targetX > spawnX ? -90 : 90
+    const arc = targetX > spawnX ? -180 : 180
     const midX = (spawnX + targetX) / 2
-    const midY = GROUND_Y - 140
+    const midY = GROUND_Y - 160
 
     this.tweens.add({
-      targets: g, x: midX, y: midY, angle: arc,
+      targets: g, x: midX, y: midY, angle: g.angle + arc / 2,
       duration: 380, ease: "Sine.easeOut",
       onComplete: () => {
         this.tweens.add({
-          targets: g, x: targetX, y: GROUND_Y - 20, angle: arc * 2,
+          targets: g, x: targetX, y: GROUND_Y - 16, angle: g.angle + arc / 2,
           duration: 380, ease: "Sine.easeIn",
           onComplete: () => {
-            // Smash
-            const smash = this.add.graphics()
-            smash.fillStyle(0x44aa33, 0.45)
-            smash.fillEllipse(targetX, GROUND_Y - 10, 36, 14)
-            this.time.delayedCall(350, () => smash.destroy())
+            // Shatter flash — green shards scatter
+            for (let s = 0; s < 5; s++) {
+              const shard = this.add.image(targetX + Phaser.Math.Between(-18, 18), GROUND_Y - 10, 'boss_bottle')
+              shard.setDisplaySize(10, 16)
+              shard.setDepth(12)
+              shard.setAlpha(0.7)
+              this.tweens.add({
+                targets: shard,
+                x: shard.x + Phaser.Math.Between(-30, 30),
+                y: shard.y + Phaser.Math.Between(10, 30),
+                alpha: 0,
+                angle: Phaser.Math.Between(-180, 180),
+                duration: 400,
+                onComplete: () => shard.destroy()
+              })
+            }
             g.destroy()
             const idx = this.activeBottles.indexOf(g)
             if (idx > -1) this.activeBottles.splice(idx, 1)
@@ -627,7 +686,7 @@ export class BossLevel1Scene extends Phaser.Scene {
         checks++
         if (!g.active) { hitCheck.destroy(); return }
         const d = Phaser.Math.Distance.Between(g.x, g.y, this.player.x, this.player.y)
-        if (d < 32 && !this.player.bottleStunned) {
+        if (d < 36 && !this.player.bottleStunned) {
           this.bottleHit()
           g.destroy()
           hitCheck.destroy()
