@@ -12,6 +12,10 @@ export class UniverseSelectScene extends Phaser.Scene {
     super({ key: "UniverseSelectScene" })
   }
 
+  init(data) {
+    this.worldUnlockAnimation = data?.worldUnlockAnimation || null
+  }
+
   create() {
     this.cameras.main.setBackgroundColor(0x0a0a12)
     
@@ -52,10 +56,25 @@ export class UniverseSelectScene extends Phaser.Scene {
     // Setup input
     this.setupInput()
 
-    // Initial selection - find first unlocked world
-    this.selectedWorld = this.findFirstSelectableWorld()
+    // Initial selection
+    // If world unlock animation is pending, start spaceship at the source world
+    const startWorld = this.worldUnlockAnimation
+      ? this.worldUnlockAnimation.fromWorld
+      : this.findFirstSelectableWorld()
+
+    this.selectedWorld = startWorld
     this.updateSelection()
-    this.moveSpaceshipToWorld(this.selectedWorld, false) // Instant move
+    this.moveSpaceshipToWorld(startWorld, false) // Instant move
+
+    // Run world unlock animation if triggered from world portal
+    if (this.worldUnlockAnimation) {
+      this.time.delayedCall(500, () => {
+        this.runWorldUnlockAnimation(
+          this.worldUnlockAnimation.fromWorld,
+          this.worldUnlockAnimation.toWorld
+        )
+      })
+    }
   }
 
   findFirstSelectableWorld() {
@@ -694,6 +713,209 @@ export class UniverseSelectScene extends Phaser.Scene {
     this.cameras.main.fadeOut(300, 0, 0, 0)
     this.time.delayedCall(300, () => {
       this.scene.start("WorldLevelSelectScene", { worldNum })
+    })
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // WORLD UNLOCK ANIMATION
+  // Plays automatically when the player travels via the world portal node.
+  // Spaceship flies from fromWorld → toWorld, the destination world node
+  // pulses and lights up, then we auto-enter that world.
+  // ─────────────────────────────────────────────────────────────────────────
+
+  runWorldUnlockAnimation(fromWorld, toWorld) {
+    const { width, height } = this.cameras.main
+
+    // Disable regular input while animating
+    this.input.keyboard.removeAllListeners()
+    this.input.removeAllListeners()
+
+    // 1. Move spaceship to the fromWorld node first (instant)
+    this.moveSpaceshipToWorld(fromWorld, false)
+    this.selectedWorld = fromWorld
+    this.updateSelection()
+
+    // 2. Brief pause, then show "Launching to World X!" banner
+    const banner = this.add.container(width / 2, height / 2 - 20)
+    banner.setDepth(50)
+    banner.setAlpha(0)
+
+    const bannerBg = this.add.rectangle(0, 0, 420, 60, 0x050515, 0.95)
+    bannerBg.setStrokeStyle(2, 0x00ff88)
+    banner.add(bannerBg)
+
+    const nextWorld = WORLDS[toWorld]
+    const bannerTxt = this.add.text(0, -8, `LAUNCHING TO WORLD ${toWorld}!`, {
+      fontFamily: "RetroPixel",
+      fontSize: "17px",
+      color: "#00ff88"
+    }).setOrigin(0.5)
+    banner.add(bannerTxt)
+
+    const bannerSub = this.add.text(0, 14, nextWorld ? `${nextWorld.name} — ${nextWorld.location}` : "", {
+      fontFamily: "RetroPixel",
+      fontSize: "11px",
+      color: "#888888"
+    }).setOrigin(0.5)
+    banner.add(bannerSub)
+
+    this.tweens.add({ targets: banner, alpha: 1, duration: 400, ease: "Back.easeOut" })
+
+    // 3. After banner shows, fly spaceship to toWorld
+    this.time.delayedCall(1000, () => {
+      this.tweens.add({ targets: banner, alpha: 0, duration: 300 })
+
+      // Fly the spaceship with a longer, dramatic duration
+      const fromPos = this.worldPositions[fromWorld - 1]
+      const toPos = this.worldPositions[toWorld - 1]
+      const targetX = toPos.x
+      const targetY = toPos.y - 50
+
+      this.tweens.killTweensOf(this.spaceship)
+      this.tweens.killTweensOf(this.engineGlow)
+
+      const goingRight = targetX > this.spaceship.x
+      this.spaceship.setFlipX(!goingRight)
+
+      // Boost engine glow for launch
+      this.tweens.add({
+        targets: this.engineGlow,
+        scaleX: 3,
+        scaleY: 3,
+        alpha: 0.9,
+        duration: 300,
+        yoyo: true,
+        onComplete: () => {
+          // Then actually fly
+          this.tweens.add({
+            targets: this.spaceship,
+            x: targetX,
+            y: targetY,
+            duration: 1400,
+            ease: "Cubic.easeInOut",
+            onComplete: () => this.onSpaceshipArrived(toWorld, banner)
+          })
+          this.tweens.add({
+            targets: this.engineGlow,
+            x: targetX,
+            y: targetY + 5,
+            duration: 1400,
+            ease: "Cubic.easeInOut"
+          })
+
+          // Leave a comet trail of dots behind the ship
+          this.createCometTrail(fromPos, toPos)
+        }
+      })
+    })
+  }
+
+  createCometTrail(fromPos, toPos) {
+    const steps = 10
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps
+      const tx = fromPos.x + (toPos.x - fromPos.x) * t
+      const ty = (fromPos.y - 50) + ((toPos.y - 50) - (fromPos.y - 50)) * t
+      const dot = this.add.circle(tx, ty, 3, 0x00ff88, 0)
+      dot.setDepth(8)
+
+      this.time.delayedCall(150 * i, () => {
+        this.tweens.add({
+          targets: dot,
+          alpha: 0.8,
+          duration: 100,
+          onComplete: () => {
+            this.tweens.add({
+              targets: dot,
+              alpha: 0,
+              scaleX: 2,
+              scaleY: 2,
+              duration: 600,
+              onComplete: () => dot.destroy()
+            })
+          }
+        })
+      })
+    }
+  }
+
+  onSpaceshipArrived(toWorld, banner) {
+    if (banner) banner.destroy()
+
+    // Select the new world in the UI
+    this.selectedWorld = toWorld
+    this.updateSelection()
+
+    // Resume hover animation at new position
+    const targetPos = this.worldPositions[toWorld - 1]
+    const targetY = targetPos.y - 50
+    this.tweens.add({
+      targets: this.spaceship,
+      y: targetY - 8,
+      duration: 1200,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1
+    })
+    this.tweens.add({
+      targets: this.spaceship,
+      angle: { from: -3, to: 3 },
+      duration: 2000,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1
+    })
+
+    // Flash the destination world node
+    const worldNode = this.worldNodes[toWorld - 1]
+    if (worldNode?.bg) {
+      this.tweens.add({
+        targets: worldNode.bg,
+        scaleX: { from: 1, to: 1.5 },
+        scaleY: { from: 1, to: 1.5 },
+        duration: 300,
+        yoyo: true,
+        repeat: 3,
+        ease: "Sine.easeInOut"
+      })
+    }
+
+    // Show "Arrived!" banner
+    const { width, height } = this.cameras.main
+    const arrivedBanner = this.add.container(width / 2, height / 2 - 20)
+    arrivedBanner.setDepth(50).setAlpha(0)
+
+    const bg = this.add.rectangle(0, 0, 440, 70, 0x050515, 0.97)
+    bg.setStrokeStyle(3, 0xff69b4)
+    arrivedBanner.add(bg)
+
+    const nextWorld = WORLDS[toWorld]
+    const txt1 = this.add.text(0, -14, `WELCOME TO WORLD ${toWorld}!`, {
+      fontFamily: "RetroPixel",
+      fontSize: "18px",
+      color: "#ff69b4"
+    }).setOrigin(0.5)
+    arrivedBanner.add(txt1)
+
+    const txt2 = this.add.text(0, 10, nextWorld ? `${nextWorld.name} — ${nextWorld.location}` : "", {
+      fontFamily: "RetroPixel",
+      fontSize: "11px",
+      color: "#aaaaaa"
+    }).setOrigin(0.5)
+    arrivedBanner.add(txt2)
+
+    this.tweens.add({ targets: arrivedBanner, alpha: 1, duration: 500, ease: "Back.easeOut" })
+
+    // Auto-enter the world after a moment
+    this.time.delayedCall(2000, () => {
+      this.tweens.add({
+        targets: arrivedBanner,
+        alpha: 0,
+        duration: 300,
+        onComplete: () => {
+          this.selectWorld(toWorld)
+        }
+      })
     })
   }
 }

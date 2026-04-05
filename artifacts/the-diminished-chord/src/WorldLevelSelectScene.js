@@ -24,6 +24,7 @@ export class WorldLevelSelectScene extends Phaser.Scene {
     this.worldNum = data.worldNum || 1
     this.world = WORLDS[this.worldNum]
     this.skipIntroCutscene = data.skipIntroCutscene || false
+    this.bossJustCompleted = data.bossJustCompleted || false
   }
 
   create() {
@@ -82,6 +83,11 @@ export class WorldLevelSelectScene extends Phaser.Scene {
     this.selectedLevelIndex = this.findFirstUnlockedIndex()
     this.updateSelection()
     this.moveTeddyToLevel(this.selectedLevelIndex, false) // Instant move
+
+    // Show victory overlay after returning from boss completion
+    if (this.bossJustCompleted) {
+      this.time.delayedCall(600, () => this.showBossVictoryOverlay())
+    }
   }
 
   getThemeColors() {
@@ -314,6 +320,16 @@ export class WorldLevelSelectScene extends Phaser.Scene {
       })
     }
 
+    // World Portal → next world: index 20 (only if next world is unlocked)
+    if (WorldManager.isWorldUnlocked(this.worldNum + 1)) {
+      positions.push({
+        x: startX + 6 * bonusSpacing,
+        y: startY + rowHeight * 2,
+        level: 0,
+        type: "WORLD_PORTAL"
+      })
+    }
+
     return positions
   }
 
@@ -337,6 +353,9 @@ export class WorldLevelSelectScene extends Phaser.Scene {
       } else if (pos.type === LEVEL_TYPES.BOSS) {
         const bossLevelId = getLevelId(this.worldNum, 0, LEVEL_TYPES.BOSS)
         const button = this.createBossNode(pos.x, pos.y, bossLevelId)
+        this.levelButtons.push(button)
+      } else if (pos.type === "WORLD_PORTAL") {
+        const button = this.createWorldPortalNode(pos.x, pos.y)
         this.levelButtons.push(button)
       }
     })
@@ -391,6 +410,7 @@ export class WorldLevelSelectScene extends Phaser.Scene {
     for (let i = 14; i < 19; i++) {
       const from = this.levelPositions[i]
       const to = this.levelPositions[i + 1]
+      if (!to) break
       // i=14 is boss, i=15 is B1, i=16 is B2 ...
       const bonusNum = i - 14 // 0=boss, 1=B1, 2=B2 ...
       const fromLevelId = i === 14
@@ -400,6 +420,13 @@ export class WorldLevelSelectScene extends Phaser.Scene {
       const color = fromIsUnlocked ? 0x886600 : 0x333322
       const alpha = fromIsUnlocked ? 0.6 : 0.25
       this.drawDashedLine(from.x, from.y, to.x, to.y, color, alpha)
+    }
+
+    // B5 → World Portal (bright gold if B5 area is unlocked)
+    const portalPos = this.levelPositions[20]
+    if (portalPos) {
+      const b5Pos = this.levelPositions[19]
+      this.drawDashedLine(b5Pos.x, b5Pos.y, portalPos.x, portalPos.y, 0x00ff88, 0.8)
     }
   }
 
@@ -572,13 +599,17 @@ export class WorldLevelSelectScene extends Phaser.Scene {
       })
     } else if (isBonus) {
       // Locked bonus nodes are selectable so players can read how to unlock them
-      bg.setInteractive({ useHandCursor: false })
+      bg.setInteractive({ useHandCursor: true })
       bg.on("pointerdown", () => {
         const index = this.levelButtons.indexOf(container)
         if (index !== -1) {
           this.selectedLevelIndex = index
           this.updateSelection()
+          this.moveTeddyToLevel(index)
           this.sound.play("ui_select_sound", { volume: 0.2 })
+          // Single click shows modal; double-click already handled by Enter
+          const bonusNum = index - 14
+          this.showLockedBonusModal(bonusNum)
         }
       })
     }
@@ -1491,7 +1522,9 @@ export class WorldLevelSelectScene extends Phaser.Scene {
 
     for (let i = 0; i < this.levelButtons.length; i++) {
       if (i === this.selectedLevelIndex) continue
-      if (!this.levelButtons[i].isUnlocked) continue
+      const btn = this.levelButtons[i]
+      // Allow locked bonus nodes and portal nodes (player can explore and read unlock hints)
+      if (!btn.isUnlocked && btn.levelType !== LEVEL_TYPES.BONUS && !btn.isWorldPortal) continue
 
       const pos = this.levelPositions[i]
       const dx = pos.x - currentPos.x
@@ -1615,7 +1648,12 @@ export class WorldLevelSelectScene extends Phaser.Scene {
           !levelData.metadata.name.startsWith("W") &&
           !levelData.metadata.name.includes(" - Stage ");
 
-      if (hasCustomName) {
+      if (selected.isWorldPortal) {
+        const nextWorldNum = this.worldNum + 1
+        const nextWorld = WORLDS[nextWorldNum]
+        this.infoLevelName.setText(`→ WORLD ${nextWorldNum}: ${nextWorld ? nextWorld.name.toUpperCase() : "NEXT WORLD"}`)
+        this.infoLevelType.setText(`Enter World ${nextWorldNum} — ${nextWorld ? nextWorld.location : ""} • Press ENTER to travel`)
+      } else if (hasCustomName) {
         // Use custom name from Level Designer
         this.infoLevelName.setText(levelData.metadata.name.toUpperCase())
         this.infoLevelType.setText(levelData.metadata.description || 
@@ -1648,8 +1686,10 @@ export class WorldLevelSelectScene extends Phaser.Scene {
         this.infoLevelType.setText(selected.isCompleted ? "✓ Completed" : "Ready to play")
       }
 
-      // Update trophy dashboard with level stats (async)
-      this.updateTrophyDashboard(selected.levelId, levelData)
+      // Update trophy dashboard with level stats (async) — skip for portal nodes
+      if (!selected.isWorldPortal) {
+        this.updateTrophyDashboard(selected.levelId, levelData)
+      }
     }
   }
 
@@ -1841,8 +1881,17 @@ export class WorldLevelSelectScene extends Phaser.Scene {
       return
     }
     const selected = this.levelButtons[this.selectedLevelIndex]
-    if (selected && selected.isUnlocked) {
+    if (!selected) return
+
+    if (selected.isWorldPortal) {
+      // Animate to next world
+      this.enterNextWorld()
+    } else if (selected.isUnlocked) {
       this.selectLevel(selected)
+    } else if (selected.levelType === LEVEL_TYPES.BONUS) {
+      // Show the unlock details modal for this locked bonus node
+      const bonusNum = this.selectedLevelIndex - 14
+      this.showLockedBonusModal(bonusNum)
     }
   }
 
@@ -1863,6 +1912,409 @@ export class WorldLevelSelectScene extends Phaser.Scene {
       const sceneKey = getLevelSceneKey(levelButton.levelId)
       console.log(`Starting level: ${sceneKey} (${levelButton.levelId})`)
       this.scene.start(sceneKey, { levelId: levelButton.levelId })
+    })
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // WORLD PORTAL NODE
+  // ─────────────────────────────────────────────────────────────────────────
+
+  createWorldPortalNode(x, y) {
+    const container = this.add.container(x, y)
+    container.setDepth(3)
+
+    const nextWorldNum = this.worldNum + 1
+    const nextWorld = WORLDS[nextWorldNum]
+
+    // Glowing outer ring
+    const glowRing = this.add.circle(0, 0, 28, 0x00ff88, 0.15)
+    glowRing.setStrokeStyle(3, 0x00ff88, 0.6)
+
+    // Inner node
+    const bg = this.add.circle(0, 0, 20, 0x0a2a1a, 0.95)
+    bg.setStrokeStyle(3, 0x00ff88)
+
+    // Arrow + world number
+    const label = this.add.text(0, 0, `→W${nextWorldNum}`, {
+      fontFamily: "RetroPixel",
+      fontSize: "9px",
+      color: "#00ff88"
+    }).setOrigin(0.5)
+
+    // Location below
+    const loc = this.add.text(0, 30, nextWorld ? nextWorld.location : "", {
+      fontFamily: "RetroPixel",
+      fontSize: "8px",
+      color: "#00aa55"
+    }).setOrigin(0.5)
+
+    container.add([glowRing, bg, label, loc])
+
+    // Pulsing glow animation
+    this.tweens.add({
+      targets: glowRing,
+      scaleX: { from: 1, to: 1.3 },
+      scaleY: { from: 1, to: 1.3 },
+      alpha: { from: 0.6, to: 0.1 },
+      duration: 1200,
+      ease: "Sine.easeInOut",
+      yoyo: true,
+      repeat: -1
+    })
+
+    // Make interactive
+    bg.setInteractive({ useHandCursor: true })
+    bg.on("pointerdown", () => {
+      this.selectedLevelIndex = this.levelButtons.length - 1
+      this.updateSelection()
+      this.moveTeddyToLevel(this.selectedLevelIndex)
+      this.sound.play("ui_select_sound", { volume: 0.2 })
+      this.time.delayedCall(400, () => this.enterNextWorld())
+    })
+    bg.on("pointerover", () => bg.setStrokeStyle(4, 0x00ffcc))
+    bg.on("pointerout", () => bg.setStrokeStyle(3, 0x00ff88))
+
+    container.bg = bg
+    container.isUnlocked = true
+    container.isWorldPortal = true
+    container.levelType = "WORLD_PORTAL"
+    container.nodeX = x
+    container.nodeY = y
+
+    return container
+  }
+
+  enterNextWorld() {
+    const nextWorldNum = this.worldNum + 1
+    if (nextWorldNum > 15) return
+
+    this.sound.play("ui_confirm_sound", { volume: 0.5 })
+    this.cameras.main.fadeOut(500, 0, 0, 0)
+    this.time.delayedCall(500, () => {
+      BGMManager.stop()
+      this.scene.start("UniverseSelectScene", {
+        worldUnlockAnimation: {
+          fromWorld: this.worldNum,
+          toWorld: nextWorldNum
+        }
+      })
+    })
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // BOSS VICTORY OVERLAY
+  // ─────────────────────────────────────────────────────────────────────────
+
+  showBossVictoryOverlay() {
+    if (this.victoryOverlay) return
+    const { width, height } = this.cameras.main
+    const cx = width / 2
+    const cy = height / 2
+
+    const nextWorldNum = this.worldNum + 1
+    const nextWorld = WORLDS[nextWorldNum]
+
+    this.victoryOverlay = this.add.container(cx, cy)
+    this.victoryOverlay.setDepth(200)
+
+    // Dark backdrop
+    const backdrop = this.add.rectangle(0, 0, width, height, 0x000000, 0.7)
+    backdrop.setInteractive()
+    this.victoryOverlay.add(backdrop)
+
+    // Panel background
+    const panel = this.add.rectangle(0, 0, 560, 340, 0x0a0a1a, 0.98)
+    panel.setStrokeStyle(3, 0xff69b4)
+    this.victoryOverlay.add(panel)
+
+    // ── Header ──
+    const crown = this.add.text(0, -148, "🎸", { fontSize: "36px" }).setOrigin(0.5)
+    this.victoryOverlay.add(crown)
+
+    const title = this.add.text(0, -110, `WORLD ${this.worldNum} BOSS COMPLETE!`, {
+      fontFamily: "RetroPixel",
+      fontSize: "20px",
+      color: "#ff69b4",
+      stroke: "#000000",
+      strokeThickness: 3
+    }).setOrigin(0.5)
+    this.victoryOverlay.add(title)
+
+    const sub = this.add.text(0, -80, `Congrats on getting through World ${this.worldNum}!`, {
+      fontFamily: "RetroPixel",
+      fontSize: "13px",
+      color: "#aaaaaa"
+    }).setOrigin(0.5)
+    this.victoryOverlay.add(sub)
+
+    // ── Divider ──
+    const div = this.add.rectangle(0, -58, 480, 1, 0x333355)
+    this.victoryOverlay.add(div)
+
+    // ── Unlock announcements ──
+    const b1Info = this.add.text(0, -35, "✓  Bonus Level B1 is now UNLOCKED!", {
+      fontFamily: "RetroPixel",
+      fontSize: "14px",
+      color: "#ffaa00"
+    }).setOrigin(0.5)
+    this.victoryOverlay.add(b1Info)
+
+    const b1Desc = this.add.text(0, -10, "A secret remix challenge awaits you in the bonus stage!", {
+      fontFamily: "RetroPixel",
+      fontSize: "11px",
+      color: "#888888"
+    }).setOrigin(0.5)
+    this.victoryOverlay.add(b1Desc)
+
+    // ── World unlock ──
+    const div2 = this.add.rectangle(0, 15, 480, 1, 0x333355)
+    this.victoryOverlay.add(div2)
+
+    if (nextWorld) {
+      const worldUnlock = this.add.text(0, 38, `→  World ${nextWorldNum}: ${nextWorld.name} is now accessible!`, {
+        fontFamily: "RetroPixel",
+        fontSize: "13px",
+        color: "#00ff88"
+      }).setOrigin(0.5)
+      this.victoryOverlay.add(worldUnlock)
+
+      const worldDesc = this.add.text(0, 60, `${nextWorld.location} awaits — find the portal node on this map to travel there.`, {
+        fontFamily: "RetroPixel",
+        fontSize: "10px",
+        color: "#666666",
+        align: "center"
+      }).setOrigin(0.5)
+      this.victoryOverlay.add(worldDesc)
+    }
+
+    // ── Tip ──
+    const div3 = this.add.rectangle(0, 88, 480, 1, 0x333355)
+    this.victoryOverlay.add(div3)
+
+    const tip = this.add.text(0, 108, "Explore bonus nodes to discover more unlock challenges!", {
+      fontFamily: "RetroPixel",
+      fontSize: "10px",
+      color: "#555555"
+    }).setOrigin(0.5)
+    this.victoryOverlay.add(tip)
+
+    // ── Close button ──
+    const closeBtn = this.add.rectangle(0, 148, 220, 36, 0xff69b4, 0.9)
+    closeBtn.setStrokeStyle(2, 0xffffff)
+    closeBtn.setInteractive({ useHandCursor: true })
+    closeBtn.on("pointerdown", () => this.closeVictoryOverlay())
+    closeBtn.on("pointerover", () => closeBtn.setFillStyle(0xff8fca))
+    closeBtn.on("pointerout", () => closeBtn.setFillStyle(0xff69b4))
+    this.victoryOverlay.add(closeBtn)
+
+    const closeTxt = this.add.text(0, 148, "AWESOME! LET'S GO →", {
+      fontFamily: "RetroPixel",
+      fontSize: "13px",
+      color: "#ffffff",
+      stroke: "#000000",
+      strokeThickness: 2
+    }).setOrigin(0.5)
+    this.victoryOverlay.add(closeTxt)
+
+    // ESC or Enter closes it
+    this.victoryEscKey = this.input.keyboard.addKey("ESC")
+    this.victoryEscKey.once("down", () => this.closeVictoryOverlay())
+
+    // Animate in
+    this.victoryOverlay.setAlpha(0)
+    this.victoryOverlay.setScale(0.85)
+    this.tweens.add({
+      targets: this.victoryOverlay,
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 350,
+      ease: "Back.easeOut"
+    })
+  }
+
+  closeVictoryOverlay() {
+    if (!this.victoryOverlay) return
+    this.tweens.add({
+      targets: this.victoryOverlay,
+      alpha: 0,
+      scaleX: 0.85,
+      scaleY: 0.85,
+      duration: 200,
+      onComplete: () => {
+        if (this.victoryOverlay) { this.victoryOverlay.destroy(); this.victoryOverlay = null }
+        if (this.victoryEscKey) { this.victoryEscKey.destroy(); this.victoryEscKey = null }
+      }
+    })
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // LOCKED BONUS MODAL
+  // ─────────────────────────────────────────────────────────────────────────
+
+  showLockedBonusModal(bonusNum) {
+    if (this.bonusModal) return
+    if (!bonusNum || bonusNum < 1 || bonusNum > 5) return
+
+    const { width, height } = this.cameras.main
+    const cx = width / 2
+    const cy = height / 2
+
+    const bonusKey = `b${bonusNum}`
+    const info = BONUS_PURPOSES[bonusKey]
+    if (!info) return
+
+    const details = {
+      b1: {
+        icon: "⚔️",
+        title: "HOW TO UNLOCK BONUS B1",
+        heading: "Defeat the World Boss!",
+        body: "Take on the World Boss battle and come out on top to unlock this secret challenge stage. Completing the boss fight is the gateway to the bonus route.",
+        reward: "Reward: Exclusive Remix Fragment track unlock"
+      },
+      b2: {
+        icon: "🎙️",
+        title: "HOW TO UNLOCK BONUS B2",
+        heading: "Find the Hidden Demo Tape!",
+        body: `A secret Demo Tape Fragment is hidden somewhere in World ${this.worldNum}'s 14 levels. It's not on the obvious path — check every corner, hidden alcove, and platform you might have skipped.`,
+        reward: "Reward: Rare Live Version track unlock"
+      },
+      b3: {
+        icon: "🎵",
+        title: "HOW TO UNLOCK BONUS B3",
+        heading: "Collect ALL Music Fragments!",
+        body: `Every single music fragment across all 14 levels in World ${this.worldNum} must be collected — not just most of them, every last one. The ♪ trophy on each level node tracks your progress.`,
+        reward: "Reward: Instrumental Variant track unlock"
+      },
+      b4: {
+        icon: "⚡",
+        title: "HOW TO UNLOCK BONUS B4",
+        heading: "Beat Every Speed Run Target!",
+        body: `Each of the 14 levels has a target completion time. Hit that time in every level to prove you've mastered the pace. Look for the ⚡ ANY% trophy on each level node to track your times.`,
+        reward: "Reward: Hardcore Stem track unlock"
+      },
+      b5: {
+        icon: "🌌",
+        title: "HOW TO UNLOCK BONUS B5",
+        heading: "Complete ALL 15 Worlds!",
+        body: "This ultimate bonus stage is reserved for those who have defeated every boss and conquered the complete World Tour across all 15 worlds. Return here when you've seen it all.",
+        reward: "Reward: Acoustic Demo — the rarest track in the game"
+      }
+    }
+
+    const d = details[bonusKey]
+
+    this.bonusModal = this.add.container(cx, cy)
+    this.bonusModal.setDepth(200)
+
+    // Backdrop
+    const backdrop = this.add.rectangle(0, 0, width, height, 0x000000, 0.65)
+    backdrop.setInteractive()
+    backdrop.on("pointerdown", () => this.closeBonusModal())
+    this.bonusModal.add(backdrop)
+
+    // Panel
+    const panel = this.add.rectangle(0, 0, 500, 280, 0x080818, 0.98)
+    panel.setStrokeStyle(3, 0x886600)
+    this.bonusModal.add(panel)
+
+    // Lock icon + emoji
+    const iconText = this.add.text(0, -118, d.icon, { fontSize: "30px" }).setOrigin(0.5)
+    this.bonusModal.add(iconText)
+
+    // Lock badge
+    const lockBadge = this.add.text(0, -88, "🔒 LOCKED", {
+      fontFamily: "RetroPixel",
+      fontSize: "11px",
+      color: "#886600"
+    }).setOrigin(0.5)
+    this.bonusModal.add(lockBadge)
+
+    // Title
+    const titleTxt = this.add.text(0, -62, d.title, {
+      fontFamily: "RetroPixel",
+      fontSize: "15px",
+      color: "#ffaa00"
+    }).setOrigin(0.5)
+    this.bonusModal.add(titleTxt)
+
+    // Divider
+    this.bonusModal.add(this.add.rectangle(0, -42, 440, 1, 0x333322))
+
+    // Heading
+    const headingTxt = this.add.text(0, -22, d.heading, {
+      fontFamily: "RetroPixel",
+      fontSize: "13px",
+      color: "#ffffff"
+    }).setOrigin(0.5)
+    this.bonusModal.add(headingTxt)
+
+    // Body
+    const bodyTxt = this.add.text(0, 18, d.body, {
+      fontFamily: "RetroPixel",
+      fontSize: "10px",
+      color: "#999999",
+      align: "center",
+      wordWrap: { width: 440 }
+    }).setOrigin(0.5)
+    this.bonusModal.add(bodyTxt)
+
+    // Reward line
+    const div2 = this.add.rectangle(0, 80, 440, 1, 0x333322)
+    this.bonusModal.add(div2)
+
+    const rewardTxt = this.add.text(0, 100, d.reward, {
+      fontFamily: "RetroPixel",
+      fontSize: "10px",
+      color: "#ffaa00"
+    }).setOrigin(0.5)
+    this.bonusModal.add(rewardTxt)
+
+    // Close button
+    const closeBtn = this.add.rectangle(0, 128, 160, 30, 0x333344, 0.9)
+    closeBtn.setStrokeStyle(2, 0x886600)
+    closeBtn.setInteractive({ useHandCursor: true })
+    closeBtn.on("pointerdown", () => this.closeBonusModal())
+    closeBtn.on("pointerover", () => closeBtn.setFillStyle(0x555566))
+    closeBtn.on("pointerout", () => closeBtn.setFillStyle(0x333344))
+    this.bonusModal.add(closeBtn)
+
+    const closeTxt = this.add.text(0, 128, "GOT IT  [ESC]", {
+      fontFamily: "RetroPixel",
+      fontSize: "11px",
+      color: "#aaaaaa"
+    }).setOrigin(0.5)
+    this.bonusModal.add(closeTxt)
+
+    // ESC to close
+    this.bonusModalEscKey = this.input.keyboard.addKey("ESC")
+    this.bonusModalEscKey.once("down", () => this.closeBonusModal())
+
+    // Animate in
+    this.bonusModal.setAlpha(0)
+    this.bonusModal.setScale(0.9)
+    this.tweens.add({
+      targets: this.bonusModal,
+      alpha: 1,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 250,
+      ease: "Back.easeOut"
+    })
+  }
+
+  closeBonusModal() {
+    if (!this.bonusModal) return
+    this.tweens.add({
+      targets: this.bonusModal,
+      alpha: 0,
+      scaleX: 0.9,
+      scaleY: 0.9,
+      duration: 180,
+      onComplete: () => {
+        if (this.bonusModal) { this.bonusModal.destroy(); this.bonusModal = null }
+        if (this.bonusModalEscKey) { this.bonusModalEscKey.destroy(); this.bonusModalEscKey = null }
+      }
     })
   }
 }

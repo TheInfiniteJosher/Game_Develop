@@ -16,7 +16,7 @@ export class World1PostBossScene extends Phaser.Scene {
 
   init(data) {
     this.returnScene = data.returnScene || "WorldLevelSelectScene"
-    this.returnData = data.returnData || { worldNum: 1 }
+    this.returnData = data.returnData || { worldNum: 1, bossJustCompleted: true }
   }
 
   create() {
