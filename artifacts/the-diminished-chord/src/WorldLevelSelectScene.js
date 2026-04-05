@@ -1418,17 +1418,20 @@ export class WorldLevelSelectScene extends Phaser.Scene {
     this.input.keyboard.on("keydown-ENTER", () => this.selectCurrentLevel())
     this.input.keyboard.on("keydown-SPACE", () => this.selectCurrentLevel())
 
-    // Back - ESC or "/" (L shoulder button on controller maps "/" key)
-    const goBack = () => {
+    // ESC still navigates directly back (standard escape behavior)
+    this.input.keyboard.on("keydown-ESC", () => {
       this.sound.play("ui_confirm_sound", { volume: 0.3 })
       this.scene.start("UniverseSelectScene")
-    }
-    this.input.keyboard.on("keydown-ESC", goBack)
-    this.input.keyboard.on("keydown-FORWARD_SLASH", goBack)
+    })
 
-    // Cutscene - "Q" key (R shoulder button on controller maps "Q" key)
+    // "/" key (L shoulder button) moves the cursor/focus TO the back button — press Enter to confirm
+    this.input.keyboard.on("keydown-FORWARD_SLASH", () => {
+      this.setNavButtonFocus("back")
+    })
+
+    // "Q" key (R shoulder button) moves the cursor/focus TO the cutscene button — press Enter to confirm
     this.input.keyboard.on("keydown-Q", () => {
-      if (this.cutsceneBtn) this.playCutscene()
+      if (this.cutsceneBtn) this.setNavButtonFocus("cutscene")
     })
   }
 

@@ -526,18 +526,40 @@ export class UniverseSelectScene extends Phaser.Scene {
   }
 
   createBackButton() {
-    const backBtn = this.add.text(30, this.cameras.main.height - 25, "< BACK TO MENU", {
+    this.navFocusState = null
+
+    this.backBtn = this.add.text(30, this.cameras.main.height - 25, "< BACK TO MENU", {
       fontFamily: "RetroPixel",
       fontSize: "12px",
       color: "#666666"
     })
-    backBtn.setInteractive({ useHandCursor: true })
-    backBtn.on("pointerover", () => backBtn.setColor("#ffffff"))
-    backBtn.on("pointerout", () => backBtn.setColor("#666666"))
-    backBtn.on("pointerdown", () => {
+    this.backBtn.setInteractive({ useHandCursor: true })
+    this.backBtn.on("pointerover", () => {
+      if (this.navFocusState !== "back") this.backBtn.setColor("#ffffff")
+    })
+    this.backBtn.on("pointerout", () => {
+      if (this.navFocusState !== "back") this.backBtn.setColor("#666666")
+    })
+    this.backBtn.on("pointerdown", () => {
       this.sound.play("ui_confirm_sound", { volume: 0.3 })
       this.scene.start("TitleScreen")
     })
+  }
+
+  setNavButtonFocus(type) {
+    this.clearNavButtonFocus()
+    this.navFocusState = type
+    if (type === "back" && this.backBtn) {
+      this.backBtn.setColor("#ffffff")
+    }
+    this.sound.play("ui_select_sound", { volume: 0.2 })
+  }
+
+  clearNavButtonFocus() {
+    if (this.navFocusState === "back" && this.backBtn) {
+      this.backBtn.setColor("#666666")
+    }
+    this.navFocusState = null
   }
 
   setupInput() {
@@ -547,17 +569,20 @@ export class UniverseSelectScene extends Phaser.Scene {
     this.input.keyboard.on("keydown-UP", () => this.navigateWorld(-1))
     this.input.keyboard.on("keydown-DOWN", () => this.navigateWorld(1))
 
-    // Select
+    // Select / confirm (also handles nav button focus state)
     this.input.keyboard.on("keydown-ENTER", () => this.selectCurrentWorld())
     this.input.keyboard.on("keydown-SPACE", () => this.selectCurrentWorld())
 
-    // Back - ESC key, "/" key (L shoulder button on controller), or "B" key
-    const goBack = () => {
+    // ESC navigates directly back (standard escape action)
+    this.input.keyboard.on("keydown-ESC", () => {
       this.sound.play("ui_confirm_sound", { volume: 0.3 })
       this.scene.start("TitleScreen")
-    }
-    this.input.keyboard.on("keydown-ESC", goBack)
-    this.input.keyboard.on("keydown-FORWARD_SLASH", goBack)
+    })
+
+    // "/" key (L shoulder button) moves the cursor TO the back button — press Enter to confirm
+    this.input.keyboard.on("keydown-FORWARD_SLASH", () => {
+      this.setNavButtonFocus("back")
+    })
 
     // Click on nodes
     this.worldNodes.forEach((node, index) => {
@@ -579,6 +604,16 @@ export class UniverseSelectScene extends Phaser.Scene {
   }
 
   navigateWorld(delta) {
+    // If the back button is focused, any right/up/down direction clears it and returns to world
+    if (this.navFocusState === "back") {
+      if (delta > 0) {
+        // Moving right/down away from back button — return to world navigation
+        this.clearNavButtonFocus()
+      }
+      // Left/up while already on back keeps focus there (already at the edge)
+      return
+    }
+
     let newWorld = this.selectedWorld + delta
     
     // Clamp to valid range
@@ -592,12 +627,15 @@ export class UniverseSelectScene extends Phaser.Scene {
       newWorld += delta > 0 ? 1 : -1
     }
 
-    // Only move if we found a valid unlocked world
+    // Move if we found a valid unlocked world
     if (newWorld >= 1 && newWorld <= 15 && WorldManager.isWorldUnlocked(newWorld) && newWorld !== this.selectedWorld) {
       this.selectedWorld = newWorld
       this.updateSelection()
       this.moveSpaceshipToWorld(newWorld)
       this.sound.play("ui_select_sound", { volume: 0.2 })
+    } else if (delta < 0) {
+      // Hit the left edge (or no valid world to the left) — focus the back button
+      this.setNavButtonFocus("back")
     }
   }
 
@@ -634,6 +672,12 @@ export class UniverseSelectScene extends Phaser.Scene {
   }
 
   selectCurrentWorld() {
+    // If the back button is focused, confirm going back
+    if (this.navFocusState === "back") {
+      this.sound.play("ui_confirm_sound", { volume: 0.3 })
+      this.scene.start("TitleScreen")
+      return
+    }
     if (WorldManager.isWorldUnlocked(this.selectedWorld)) {
       this.selectWorld(this.selectedWorld)
     }
