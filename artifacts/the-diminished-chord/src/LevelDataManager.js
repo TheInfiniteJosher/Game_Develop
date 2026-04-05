@@ -263,7 +263,11 @@ class LevelDataManagerClass {
       // Style fields for the unified level architecture
       styleWorld: row.style_world || row.world_number || null,
       stylePreset: row.style_preset || "auto",
-      tileStyles: row.tile_styles || []
+      tileStyles: row.tile_styles || [],
+      // Background visual settings - stored in settings JSONB for flexibility
+      backgroundBrightness: settings.backgroundBrightness ?? undefined,
+      backgroundContrast: settings.backgroundContrast ?? undefined,
+      useWorldBackgroundSettings: settings.useWorldBackgroundSettings ?? true
     }
   }
   
@@ -281,10 +285,19 @@ class LevelDataManagerClass {
       levelType = "tutorial"
     }
     
-    // Include stopwatch in settings JSONB (since there's no dedicated column)
+    // Include stopwatch and background visual settings in settings JSONB
     const settings = { ...(levelData.settings || {}) }
     if (levelData.stopwatch) {
       settings.stopwatch = levelData.stopwatch
+    }
+    if (levelData.backgroundBrightness !== undefined) {
+      settings.backgroundBrightness = levelData.backgroundBrightness
+    }
+    if (levelData.backgroundContrast !== undefined) {
+      settings.backgroundContrast = levelData.backgroundContrast
+    }
+    if (levelData.useWorldBackgroundSettings !== undefined) {
+      settings.useWorldBackgroundSettings = levelData.useWorldBackgroundSettings
     }
     
     return {

@@ -1334,34 +1334,59 @@ export class WorldLevelSelectScene extends Phaser.Scene {
     const accentColor = Phaser.Display.Color.IntegerToColor(this.themeColors.accent).rgba
 
     // Back to world select
-    const backBtn = this.add.text(30, height - 25, "< WORLD MAP", {
+    this.backBtn = this.add.text(30, height - 25, "< WORLD MAP", {
       fontFamily: "RetroPixel",
       fontSize: "12px",
       color: "#666666"
     })
-    backBtn.setInteractive({ useHandCursor: true })
-    backBtn.on("pointerover", () => backBtn.setColor(accentColor))
-    backBtn.on("pointerout", () => backBtn.setColor("#666666"))
-    backBtn.on("pointerdown", () => {
+    this.backBtn.setInteractive({ useHandCursor: true })
+    this.backBtn.on("pointerover", () => { if (this.navFocusState !== "back") this.backBtn.setColor(accentColor) })
+    this.backBtn.on("pointerout", () => { if (this.navFocusState !== "back") this.backBtn.setColor("#666666") })
+    this.backBtn.on("pointerdown", () => {
       this.sound.play("ui_confirm_sound", { volume: 0.3 })
       this.scene.start("UniverseSelectScene")
     })
 
     // Watch Cutscene button (only if cutscene is available)
+    this.cutsceneBtn = null
     const sceneKey = CutsceneFlowManager.getWorldIntroSceneKey(this.worldNum)
     if (sceneKey) {
-      const cutsceneBtn = this.add.text(width - 30, height - 25, "WATCH CUTSCENE >", {
+      this.cutsceneBtn = this.add.text(width - 30, height - 25, "WATCH CUTSCENE >", {
         fontFamily: "RetroPixel",
         fontSize: "12px",
         color: "#666666"
       }).setOrigin(1, 0)
-      cutsceneBtn.setInteractive({ useHandCursor: true })
-      cutsceneBtn.on("pointerover", () => cutsceneBtn.setColor("#ff69b4"))
-      cutsceneBtn.on("pointerout", () => cutsceneBtn.setColor("#666666"))
-      cutsceneBtn.on("pointerdown", () => {
+      this.cutsceneBtn.setInteractive({ useHandCursor: true })
+      this.cutsceneBtn.on("pointerover", () => { if (this.navFocusState !== "cutscene") this.cutsceneBtn.setColor("#ff69b4") })
+      this.cutsceneBtn.on("pointerout", () => { if (this.navFocusState !== "cutscene") this.cutsceneBtn.setColor("#666666") })
+      this.cutsceneBtn.on("pointerdown", () => {
         this.playCutscene()
       })
     }
+
+    // Controller nav focus state (null = level nodes, "back" = back btn, "cutscene" = cutscene btn)
+    this.navFocusState = null
+  }
+
+  setNavButtonFocus(type) {
+    this.clearNavButtonFocus()
+    this.navFocusState = type
+    const accentColor = Phaser.Display.Color.IntegerToColor(this.themeColors.accent).rgba
+    if (type === "back" && this.backBtn) {
+      this.backBtn.setColor(accentColor)
+    } else if (type === "cutscene" && this.cutsceneBtn) {
+      this.cutsceneBtn.setColor("#ff69b4")
+    }
+    this.sound.play("ui_select_sound", { volume: 0.2 })
+  }
+
+  clearNavButtonFocus() {
+    if (this.navFocusState === "back" && this.backBtn) {
+      this.backBtn.setColor("#666666")
+    } else if (this.navFocusState === "cutscene" && this.cutsceneBtn) {
+      this.cutsceneBtn.setColor("#666666")
+    }
+    this.navFocusState = null
   }
 
   playCutscene() {
@@ -1393,10 +1418,17 @@ export class WorldLevelSelectScene extends Phaser.Scene {
     this.input.keyboard.on("keydown-ENTER", () => this.selectCurrentLevel())
     this.input.keyboard.on("keydown-SPACE", () => this.selectCurrentLevel())
 
-    // Back
-    this.input.keyboard.on("keydown-ESC", () => {
+    // Back - ESC or "/" (L shoulder button on controller maps "/" key)
+    const goBack = () => {
       this.sound.play("ui_confirm_sound", { volume: 0.3 })
       this.scene.start("UniverseSelectScene")
+    }
+    this.input.keyboard.on("keydown-ESC", goBack)
+    this.input.keyboard.on("keydown-FORWARD_SLASH", goBack)
+
+    // Cutscene - "Q" key (R shoulder button on controller maps "Q" key)
+    this.input.keyboard.on("keydown-Q", () => {
+      if (this.cutsceneBtn) this.playCutscene()
     })
   }
 
@@ -1406,6 +1438,20 @@ export class WorldLevelSelectScene extends Phaser.Scene {
    * @param {string} direction - "left", "right", "up", or "down"
    */
   navigateDirection(direction) {
+    // If a nav button is focused, let vertical or opposing direction return to level grid
+    if (this.navFocusState === "back") {
+      if (direction === "right" || direction === "up" || direction === "down") {
+        this.clearNavButtonFocus()
+      }
+      return
+    }
+    if (this.navFocusState === "cutscene") {
+      if (direction === "left" || direction === "up" || direction === "down") {
+        this.clearNavButtonFocus()
+      }
+      return
+    }
+
     const currentPos = this.levelPositions[this.selectedLevelIndex]
     if (!currentPos) return
 
@@ -1464,6 +1510,13 @@ export class WorldLevelSelectScene extends Phaser.Scene {
       this.updateSelection()
       this.moveTeddyToLevel(bestIndex)
       this.sound.play("ui_select_sound", { volume: 0.2 })
+    } else {
+      // Hit the edge - focus the relevant nav button so d-pad always reaches navigation
+      if (direction === "left") {
+        this.setNavButtonFocus("back")
+      } else if (direction === "right" && this.cutsceneBtn) {
+        this.setNavButtonFocus("cutscene")
+      }
     }
   }
 
@@ -1482,32 +1535,28 @@ export class WorldLevelSelectScene extends Phaser.Scene {
   }
 
   findFirstUnlockedIndex() {
-    // Priority 1: Find the first uncompleted normal level in progression order
-    // Normal levels are indices 0-13
-    for (let i = 0; i < 14; i++) {
-      if (this.levelButtons[i] && 
-          this.levelButtons[i].isUnlocked && 
-          !this.levelButtons[i].isCompleted) {
-        return i
+    // Priority 1 (session memory): Return to the last level played this session
+    const sessionKey = `lastLevelIndex_W${this.worldNum}`
+    const lastPlayedRaw = sessionStorage.getItem(sessionKey)
+    if (lastPlayedRaw !== null) {
+      const lastPlayed = parseInt(lastPlayedRaw, 10)
+      if (!isNaN(lastPlayed) && this.levelButtons[lastPlayed] && this.levelButtons[lastPlayed].isUnlocked) {
+        return lastPlayed
       }
     }
-    
-    // Priority 2: If all normal levels are done, check if boss is unlocked and uncompleted
-    const bossIndex = 19 // Boss is the last button
-    if (this.levelButtons[bossIndex] && 
-        this.levelButtons[bossIndex].isUnlocked && 
-        !this.levelButtons[bossIndex].isCompleted) {
-      return bossIndex
+
+    // Priority 2 (new session): Start at the first level of this world (index 0)
+    if (this.levelButtons[0] && this.levelButtons[0].isUnlocked) {
+      return 0
     }
-    
-    // Priority 3: Find the last completed normal level (for replay)
-    for (let i = 13; i >= 0; i--) {
+
+    // Fallback: first unlocked level by progression
+    for (let i = 0; i < this.levelButtons.length; i++) {
       if (this.levelButtons[i] && this.levelButtons[i].isUnlocked) {
         return i
       }
     }
-    
-    // Fallback: First level (should always be unlocked)
+
     return 0
   }
 
@@ -1735,6 +1784,16 @@ export class WorldLevelSelectScene extends Phaser.Scene {
   }
 
   selectCurrentLevel() {
+    // If a nav button is focused, activate it instead
+    if (this.navFocusState === "back") {
+      this.sound.play("ui_confirm_sound", { volume: 0.3 })
+      this.scene.start("UniverseSelectScene")
+      return
+    }
+    if (this.navFocusState === "cutscene") {
+      this.playCutscene()
+      return
+    }
     const selected = this.levelButtons[this.selectedLevelIndex]
     if (selected && selected.isUnlocked) {
       this.selectLevel(selected)
@@ -1745,6 +1804,12 @@ export class WorldLevelSelectScene extends Phaser.Scene {
     if (!levelButton.isUnlocked) return
 
     this.sound.play("ui_confirm_sound", { volume: 0.3 })
+
+    // Remember which level was last played in this world (session memory)
+    const currentIndex = this.levelButtons.indexOf(levelButton)
+    if (currentIndex !== -1) {
+      sessionStorage.setItem(`lastLevelIndex_W${this.worldNum}`, String(currentIndex))
+    }
 
     // Fade out and start level
     this.cameras.main.fadeOut(300, 0, 0, 0)

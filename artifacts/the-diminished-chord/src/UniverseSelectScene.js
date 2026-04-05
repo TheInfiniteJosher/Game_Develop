@@ -551,11 +551,13 @@ export class UniverseSelectScene extends Phaser.Scene {
     this.input.keyboard.on("keydown-ENTER", () => this.selectCurrentWorld())
     this.input.keyboard.on("keydown-SPACE", () => this.selectCurrentWorld())
 
-    // Back
-    this.input.keyboard.on("keydown-ESC", () => {
+    // Back - ESC key, "/" key (L shoulder button on controller), or "B" key
+    const goBack = () => {
       this.sound.play("ui_confirm_sound", { volume: 0.3 })
       this.scene.start("TitleScreen")
-    })
+    }
+    this.input.keyboard.on("keydown-ESC", goBack)
+    this.input.keyboard.on("keydown-FORWARD_SLASH", goBack)
 
     // Click on nodes
     this.worldNodes.forEach((node, index) => {

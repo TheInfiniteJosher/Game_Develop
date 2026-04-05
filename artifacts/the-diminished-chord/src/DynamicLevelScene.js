@@ -132,6 +132,10 @@ export class DynamicLevelScene extends Phaser.Scene {
 
     // Get world data
     this.world = this.worldNum > 0 ? WORLDS[this.worldNum] : null
+
+    // Initialize world visual settings cache (populated async by loadAndApplyWorldVisualSettings)
+    this.worldVisualSettings = null
+    this.trackedBackgrounds = []
     
     // Initialize session - fresh start clears previous collection progress
     LevelSessionManager.startSession(this.levelId, this.isFreshStart)
@@ -1141,6 +1145,9 @@ export class DynamicLevelScene extends Phaser.Scene {
       
       // Get background visual settings (brightness/contrast)
       const bgSettings = this.getBackgroundVisualSettings()
+
+      // Track all background images so world metadata settings can be re-applied async
+      this.trackedBackgrounds = []
       
       for (let i = 0; i < numTiles; i++) {
         const bg = this.add.image(i * scaledWidth, this.mapHeight, bgKey)
@@ -1156,9 +1163,13 @@ export class DynamicLevelScene extends Phaser.Scene {
         
         // Apply brightness/contrast visual adjustments
         this.applyBackgroundVisualSettings(bg, bgSettings)
+        this.trackedBackgrounds.push(bg)
       }
       
       console.log(`[DynamicLevelScene] Created background with key: ${bgKey}, brightness: ${bgSettings.brightness}, contrast: ${bgSettings.contrast}`)
+
+      // Async-load world visual settings (from "Apply to World" feature) and re-apply if needed
+      this.loadAndApplyWorldVisualSettings()
     }
   }
   
@@ -1167,23 +1178,84 @@ export class DynamicLevelScene extends Phaser.Scene {
    * Priority: level-specific > world-specific > default
    */
   getBackgroundVisualSettings() {
-    // Check for level-specific settings first
     const levelData = LevelDataManager.getLevel(this.levelId)
-    
-    // If level has its own settings and isn't using world settings
+
+    // Level has its own explicit settings (user toggled off "Use World Settings")
     if (levelData && levelData.useWorldBackgroundSettings === false) {
       return {
         brightness: levelData.backgroundBrightness ?? 1.0,
         contrast: levelData.backgroundContrast ?? 1.0
       }
     }
-    
-    // Otherwise use world defaults (could be fetched from Supabase world_metadata)
-    // For now, we'll use reasonable defaults since world settings need async loading
-    return {
-      brightness: levelData?.backgroundBrightness ?? 1.0,
-      contrast: levelData?.backgroundContrast ?? 1.0
+
+    // Level-specific brightness/contrast values (saved from designer) take priority
+    // even in "use world settings" mode (acts as world-level override already applied)
+    if (levelData && (levelData.backgroundBrightness !== undefined || levelData.backgroundContrast !== undefined)) {
+      return {
+        brightness: levelData.backgroundBrightness ?? 1.0,
+        contrast: levelData.backgroundContrast ?? 1.0
+      }
     }
+
+    // Use world-level settings loaded from world_metadata (if available)
+    if (this.worldVisualSettings) {
+      return {
+        brightness: this.worldVisualSettings.brightness ?? 1.0,
+        contrast: this.worldVisualSettings.contrast ?? 1.0
+      }
+    }
+
+    // Defaults
+    return { brightness: 1.0, contrast: 1.0 }
+  }
+
+  /**
+   * Async-load world_metadata visual settings and re-apply to existing backgrounds
+   * Called after backgrounds are created to pick up "Apply to World" settings
+   */
+  async loadAndApplyWorldVisualSettings() {
+    try {
+      const worldNum = this.getWorldNumberFromLevelId()
+      if (!worldNum) return
+
+      // Check if level already has its own explicit settings — no need to load world data
+      const levelData = LevelDataManager.getLevel(this.levelId)
+      const levelHasOwnSettings = levelData?.backgroundBrightness !== undefined || levelData?.backgroundContrast !== undefined
+      if (levelHasOwnSettings) return
+
+      const { supabase } = await import("./integrations/supabase/client.js")
+
+      const { data, error } = await supabase
+        .from("world_metadata")
+        .select("background_brightness, background_contrast")
+        .eq("world_number", worldNum)
+        .maybeSingle()
+
+      if (error || !data) return
+
+      const worldSettings = {
+        brightness: data.background_brightness ?? 1.0,
+        contrast: data.background_contrast ?? 1.0
+      }
+
+      // Only re-apply if values differ from current defaults to avoid unnecessary redraws
+      if (worldSettings.brightness !== 1.0 || worldSettings.contrast !== 1.0) {
+        this.worldVisualSettings = worldSettings
+        if (this.trackedBackgrounds) {
+          this.trackedBackgrounds.forEach(bg => {
+            if (bg && bg.active) this.applyBackgroundVisualSettings(bg, worldSettings)
+          })
+        }
+      }
+    } catch (e) {
+      // world_metadata table might not exist yet — silently ignore
+    }
+  }
+
+  getWorldNumberFromLevelId() {
+    if (!this.levelId) return null
+    const match = this.levelId.match(/^W(\d+)/)
+    return match ? parseInt(match[1], 10) : null
   }
   
   /**
