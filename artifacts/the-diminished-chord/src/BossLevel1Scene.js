@@ -211,11 +211,11 @@ export class BossLevel1Scene extends Phaser.Scene {
       g.lineStyle(1, 0x555555, 0.5); g.strokeCircle(ax + 16, 408, 10)
     }
 
-    // Hanging cables on stage walls (decorative)
+    // Hanging cables on stage walls (decorative, approximated with polylines)
     g.lineStyle(3, 0x665500, 0.5)
-    g.moveTo(128, 300); g.cubicBezierTo(200, 420, 310, 440, 320, STAGE_Y); g.strokePath()
+    g.moveTo(128, 300); g.lineTo(175, 380); g.lineTo(255, 436); g.lineTo(320, STAGE_Y); g.strokePath()
     g.lineStyle(3, 0x443300, 0.5)
-    g.moveTo(128, 340); g.cubicBezierTo(250, 430, 300, 445, 320, STAGE_Y); g.strokePath()
+    g.moveTo(128, 340); g.lineTo(200, 415); g.lineTo(278, 442); g.lineTo(320, STAGE_Y); g.strokePath()
 
     // ─ Act 2: Crowd throws bottles sign ──────────────────────────────────
     this.add.text(CROWD_START + 200, 60, "🍺 CROWD AREA — WATCH OUT!", {
@@ -390,17 +390,18 @@ export class BossLevel1Scene extends Phaser.Scene {
     cableData.forEach(cd => {
       // Decorative cable squiggle
       const g = this.add.graphics()
+      // Cable squiggle approximated with polylines
       g.lineStyle(3, 0xaa7700, 0.85)
       g.moveTo(cd.x - 44, cd.y)
-      g.cubicBezierTo(cd.x - 22, cd.y - 18, cd.x + 22, cd.y - 18, cd.x + 44, cd.y)
+      g.lineTo(cd.x - 20, cd.y - 16); g.lineTo(cd.x + 20, cd.y - 16); g.lineTo(cd.x + 44, cd.y)
       g.strokePath()
       g.moveTo(cd.x + 44, cd.y)
-      g.cubicBezierTo(cd.x + 22, cd.y + 14, cd.x - 22, cd.y + 14, cd.x - 44, cd.y + 6)
+      g.lineTo(cd.x + 20, cd.y + 13); g.lineTo(cd.x - 20, cd.y + 13); g.lineTo(cd.x - 44, cd.y + 6)
       g.strokePath()
       // Second loop
       g.lineStyle(2, 0x775500, 0.5)
       g.moveTo(cd.x - 30, cd.y - 4)
-      g.cubicBezierTo(cd.x, cd.y - 26, cd.x + 30, cd.y - 4, cd.x + 30, cd.y + 8)
+      g.lineTo(cd.x, cd.y - 22); g.lineTo(cd.x + 30, cd.y - 4); g.lineTo(cd.x + 30, cd.y + 8)
       g.strokePath()
 
       // Invisible trigger zone
