@@ -259,17 +259,22 @@ export class WorldLevelSelectScene extends Phaser.Scene {
     const positions = []
 
     // Layout:
-    // Row 1: Levels 1-7 (left to right)
-    // Row 2: Levels 8-14 (right to left) - serpentine
-    // Row 3: Bonus levels B1-B5 (centered, smaller)
-    // Boss: At the end on the right
+    // Row 1: Levels 1-7  (left → right)
+    // Row 2: Levels 8-14 (right → left, serpentine)  — L14 lands at far left
+    // Row 3: Boss directly below L14, then B1-B5 flowing right
+    //   [L14]
+    //     ↓
+    //  [BOSS] → [B1] → [B2] → [B3] → [B4] → [B5]
+    //
+    // Button indices: L1-L14 = 0-13, Boss = 14, B1-B5 = 15-19
 
-    const startY = 140
-    const rowHeight = 100
+    const startY = 125
+    const rowHeight = 115
     const nodeSpacing = 130
     const startX = 80
+    const bonusSpacing = 113
 
-    // Row 1: Levels 1-7 (left to right)
+    // Row 1: Levels 1-7 (left to right) — indices 0-6
     for (let i = 0; i < 7; i++) {
       positions.push({
         x: startX + i * nodeSpacing,
@@ -279,7 +284,8 @@ export class WorldLevelSelectScene extends Phaser.Scene {
       })
     }
 
-    // Row 2: Levels 8-14 (right to left - serpentine)
+    // Row 2: Levels 8-14 (right to left — serpentine) — indices 7-13
+    // L14 ends up at x=startX (same column as L1), creating a clean vertical drop to boss
     for (let i = 0; i < 7; i++) {
       positions.push({
         x: startX + (6 - i) * nodeSpacing,
@@ -289,24 +295,24 @@ export class WorldLevelSelectScene extends Phaser.Scene {
       })
     }
 
-    // Row 3: Bonus levels B1-B5 (centered, spaced)
-    const bonusStartX = (width - 5 * 100) / 2 + 40
+    // Boss: directly below L14 (index 14)
+    // L14 is at (startX, startY + rowHeight), so boss goes straight down
+    positions.push({
+      x: startX,
+      y: startY + rowHeight * 2,
+      level: 0,
+      type: LEVEL_TYPES.BOSS
+    })
+
+    // Bonus B1-B5: flowing right from boss position — indices 15-19
     for (let i = 0; i < 5; i++) {
       positions.push({
-        x: bonusStartX + i * 100,
-        y: startY + rowHeight * 2 + 30,
+        x: startX + (i + 1) * bonusSpacing,
+        y: startY + rowHeight * 2,
         level: i + 1,
         type: LEVEL_TYPES.BONUS
       })
     }
-
-    // Boss: Right side, below normal levels
-    positions.push({
-      x: width - 100,
-      y: startY + rowHeight * 2.5,
-      level: 0,
-      type: LEVEL_TYPES.BOSS
-    })
 
     return positions
   }
@@ -335,8 +341,8 @@ export class WorldLevelSelectScene extends Phaser.Scene {
       }
     })
 
-    // Add row labels
-    this.add.text(30, 140, "LEVELS 1-7", {
+    // Row labels (positions match calculateLevelPositions startY/rowHeight)
+    this.add.text(30, 125, "LEVELS 1-7", {
       fontFamily: "RetroPixel",
       fontSize: "8px",
       color: "#444444"
@@ -346,7 +352,8 @@ export class WorldLevelSelectScene extends Phaser.Scene {
       fontSize: "8px",
       color: "#444444"
     })
-    this.add.text(30, 370, "BONUS", {
+    // Bonus label above the bonus row, starting after the boss node column
+    this.add.text(193, 340, "BONUS STAGES", {
       fontFamily: "RetroPixel",
       fontSize: "8px",
       color: "#ffaa00"
@@ -356,34 +363,44 @@ export class WorldLevelSelectScene extends Phaser.Scene {
   drawPaths() {
     this.pathGraphics.clear()
 
-    // Draw paths between normal levels (serpentine)
-    // Row 1: 1-7 (left to right)
+    // Row 1: L1-L7 (left to right, indices 0-6)
     for (let i = 0; i < 6; i++) {
       const from = this.levelPositions[i]
       const to = this.levelPositions[i + 1]
       this.drawPathSegment(from, to, i + 1, i + 2)
     }
 
-    // Connection from level 7 to level 8 (going down)
-    const level7 = this.levelPositions[6]
-    const level8 = this.levelPositions[7]
-    this.drawPathSegment(level7, level8, 7, 8)
+    // L7 → L8 (serpentine turn, going down)
+    this.drawPathSegment(this.levelPositions[6], this.levelPositions[7], 7, 8)
 
-    // Row 2: 8-14 (right to left - serpentine continues)
+    // Row 2: L8-L14 (right to left, indices 7-13)
     for (let i = 7; i < 13; i++) {
       const from = this.levelPositions[i]
       const to = this.levelPositions[i + 1]
       this.drawPathSegment(from, to, i + 1, i + 2)
     }
 
-    // Connection from level 14 to boss (direct path - no bonus connections!)
+    // L14 → Boss (vertical drop — index 13 → 14)
     const level14 = this.levelPositions[13]
-    const boss = this.levelPositions[19] // Boss is last
+    const boss = this.levelPositions[14]
     this.drawPathSegment(level14, boss, 14, "boss")
 
-    // Bonus levels are isolated - no connecting paths to normal progression
-    // They have their own unlock criteria and are displayed separately
-    // Only draw a subtle glow/border around unlocked bonus levels
+    // Boss → B1-B5 (dashed lines — post-boss bonus content, indices 14-19)
+    // Check unlock state directly from WorldManager since levelButtons aren't built yet
+    const bossLevelId = getLevelId(this.worldNum, 0, LEVEL_TYPES.BOSS)
+    for (let i = 14; i < 19; i++) {
+      const from = this.levelPositions[i]
+      const to = this.levelPositions[i + 1]
+      // i=14 is boss, i=15 is B1, i=16 is B2 ...
+      const bonusNum = i - 14 // 0=boss, 1=B1, 2=B2 ...
+      const fromLevelId = i === 14
+        ? bossLevelId
+        : getLevelId(this.worldNum, bonusNum, LEVEL_TYPES.BONUS)
+      const fromIsUnlocked = WorldManager.isLevelUnlocked(fromLevelId)
+      const color = fromIsUnlocked ? 0x886600 : 0x333322
+      const alpha = fromIsUnlocked ? 0.6 : 0.25
+      this.drawDashedLine(from.x, from.y, to.x, to.y, color, alpha)
+    }
   }
 
   drawPathSegment(from, to, fromLevel, toLevel) {
@@ -551,6 +568,17 @@ export class WorldLevelSelectScene extends Phaser.Scene {
             this.moveTeddyToLevel(index)
             this.sound.play("ui_select_sound", { volume: 0.2 })
           }
+        }
+      })
+    } else if (isBonus) {
+      // Locked bonus nodes are selectable so players can read how to unlock them
+      bg.setInteractive({ useHandCursor: false })
+      bg.on("pointerdown", () => {
+        const index = this.levelButtons.indexOf(container)
+        if (index !== -1) {
+          this.selectedLevelIndex = index
+          this.updateSelection()
+          this.sound.play("ui_select_sound", { volume: 0.2 })
         }
       })
     }
@@ -1596,9 +1624,24 @@ export class WorldLevelSelectScene extends Phaser.Scene {
         this.infoLevelName.setText(`BOSS: ${this.world.bossName}`)
         this.infoLevelType.setText("Defeat the boss to complete this world!")
       } else if (selected.levelType === LEVEL_TYPES.BONUS) {
-        const bonusNum = this.selectedLevelIndex - 13 // Bonus starts at index 14
-        this.infoLevelName.setText(`BONUS LEVEL ${bonusNum}`)
-        this.infoLevelType.setText(selected.bonusPurpose || "Special challenge level")
+        const bonusNum = this.selectedLevelIndex - 14 // Boss is index 14; bonus B1-B5 are 15-19
+        const bonusKey = `b${bonusNum}`
+        const bonusPurposeInfo = BONUS_PURPOSES[bonusKey]
+        const bonusName = bonusPurposeInfo?.name || `Bonus ${bonusNum}`
+        this.infoLevelName.setText(`BONUS B${bonusNum}: ${bonusName.toUpperCase()}`)
+        if (!selected.isUnlocked) {
+          const unlockHints = {
+            boss_defeated: "Defeat the world boss to unlock",
+            hidden_item: "Find the hidden Demo Tape Fragment in this world",
+            all_fragments: "Collect every music fragment across all 14 levels",
+            all_speedruns: "Beat the speed run target time in every level",
+            game_complete: "Complete all 15 worlds to unlock"
+          }
+          const hint = unlockHints[bonusPurposeInfo?.unlockMethod] || "Complete special objectives to unlock"
+          this.infoLevelType.setText(`🔒 ${hint}`)
+        } else {
+          this.infoLevelType.setText(selected.isCompleted ? "✓ Completed" : "Special challenge level")
+        }
       } else {
         const levelNum = this.selectedLevelIndex + 1
         this.infoLevelName.setText(`LEVEL ${levelNum}`)
