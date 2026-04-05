@@ -89,7 +89,7 @@ export class BossLevel1Scene extends Phaser.Scene {
     this.player = new TeddyPlayer(this, 96, STAGE_Y - 60)
     this.player.setDepth(10)
 
-    // Physics colliders
+    // Physics colliders (player must exist before these are set up)
     this.physics.add.collider(this.player, this.solidGroup)
     this.physics.add.collider(
       this.player,
@@ -98,6 +98,7 @@ export class BossLevel1Scene extends Phaser.Scene {
       null,
       this
     )
+    this.wireCableOverlaps()
 
     // Rival band (visual-only object, no physics sprite)
     this.createRivalBand()
@@ -410,8 +411,12 @@ export class BossLevel1Scene extends Phaser.Scene {
 
       const cable = { trigger, graphic: g, pos: cd, tripped: false, cooldown: 0 }
       this.cables.push(cable)
+    })
+  }
 
-      this.physics.add.overlap(this.player, trigger, () => {
+  wireCableOverlaps() {
+    this.cables.forEach(cable => {
+      this.physics.add.overlap(this.player, cable.trigger, () => {
         if (!cable.tripped) this.triggerCableTrip(cable)
       })
     })
