@@ -20,6 +20,10 @@ class BGMManagerClass {
     this.baseVolume = this.volume // Store base volume before ducking
     this.isDucked = false // Track if volume is currently ducked
     this.isDevMode = false // Flag to track if we're in dev mode menus
+    // Increment each time playMusic() is called so stale async-load
+    // callbacks (common on mobile where audio is rarely cached) cannot
+    // start playing an old track that was already superseded.
+    this._loadRequestId = 0
   }
 
   /**
@@ -195,6 +199,12 @@ class BGMManagerClass {
       return
     }
 
+    // Stamp this request so any in-flight async load for a previous track
+    // can detect it has been superseded and bail out before starting playback.
+    // This is the primary fix for simultaneous-music on mobile, where tracks
+    // are rarely cached and the async load path is always taken.
+    const requestId = ++this._loadRequestId
+
     // Stop current music
     this.stop()
 
@@ -217,21 +227,24 @@ class BGMManagerClass {
       const onFileError = (file) => {
         if (file.key === audioKey) {
           loadFailed = true
-          // Log as warning, not error - music failing to load shouldn't alarm users
           console.warn(`[BGMManager] Music unavailable: ${audioKey} - continuing without music`)
         }
       }
       scene.load.once("loaderror", onFileError)
       
       scene.load.once("complete", () => {
-        // Clean up the error listener
         scene.load.off("loaderror", onFileError)
         
-        // Only start playback if the file loaded successfully
+        // Guard: if a newer playMusic() call arrived while we were loading,
+        // discard this result — another track owns the slot now.
+        if (requestId !== this._loadRequestId) {
+          console.log(`[BGMManager] Discarding stale load for ${audioKey} (superseded)`)
+          return
+        }
+        
         if (!loadFailed && scene.cache.audio.exists(audioKey)) {
           this.startPlayback(scene, audioKey, loop, meta)
         }
-        // Silently continue if music failed - game works fine without it
       })
       scene.load.start()
     }
@@ -278,8 +291,15 @@ class BGMManagerClass {
    */
   stop() {
     if (this.currentBgm) {
-      this.currentBgm.stop()
-      this.currentBgm.destroy()
+      try {
+        // On iOS/mobile the Web Audio context can be slow to silence a sound
+        // after stop() alone. Muting first makes the silence instantaneous.
+        this.currentBgm.setVolume(0)
+        this.currentBgm.stop()
+        this.currentBgm.destroy()
+      } catch (e) {
+        // Sound may already be destroyed if the owning scene was shut down
+      }
       this.currentBgm = null
       this.currentAudioKey = null
       this.currentAudioUrl = null

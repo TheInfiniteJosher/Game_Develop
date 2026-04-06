@@ -106,9 +106,11 @@
       #touch-overlay.edit-mode .tc-resize-handle { display: flex; }
 
       /* ─────────────────────────────────────────
-         D-PAD
+         D-PAD — arrows scale with container via
+         a CSS custom property updated by JS
          ───────────────────────────────────────── */
       #tc-dpad {
+        --dpad-sz: 148px;
         border-radius: 50%;
         background: radial-gradient(circle at 50% 50%,
           rgba(35, 35, 60, 0.78) 0%,
@@ -118,8 +120,8 @@
 
       .dpad-arrow {
         position: absolute;
-        width: 44px;
-        height: 44px;
+        width: calc(var(--dpad-sz) * 0.295);
+        height: calc(var(--dpad-sz) * 0.295);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -127,7 +129,7 @@
         background: rgba(45, 45, 75, 0.88);
         border: 1.5px solid rgba(110, 110, 155, 0.55);
         color: rgba(170, 170, 210, 0.9);
-        font-size: 18px;
+        font-size: calc(var(--dpad-sz) * 0.12);
         pointer-events: none;
         transition: background 0.06s, color 0.06s, transform 0.05s;
       }
@@ -138,10 +140,10 @@
         color: #00eeff;
       }
 
-      .dpad-up    { top: 4px;  left: 50%; transform: translateX(-50%); }
-      .dpad-down  { bottom: 4px; left: 50%; transform: translateX(-50%); }
-      .dpad-left  { left: 4px;  top: 50%; transform: translateY(-50%); }
-      .dpad-right { right: 4px; top: 50%; transform: translateY(-50%); }
+      .dpad-up    { top: 3%;  left: 50%; transform: translateX(-50%); }
+      .dpad-down  { bottom: 3%; left: 50%; transform: translateX(-50%); }
+      .dpad-left  { left: 3%;  top: 50%; transform: translateY(-50%); }
+      .dpad-right { right: 3%; top: 50%; transform: translateY(-50%); }
 
       .dpad-up.pressed    { transform: translateX(-50%) scale(0.88); }
       .dpad-down.pressed  { transform: translateX(-50%) scale(0.88); }
@@ -152,7 +154,8 @@
         position: absolute;
         top: 50%; left: 50%;
         transform: translate(-50%, -50%);
-        width: 30px; height: 30px;
+        width: calc(var(--dpad-sz) * 0.20);
+        height: calc(var(--dpad-sz) * 0.20);
         background: rgba(38, 38, 65, 0.95);
         border-radius: 50%;
         pointer-events: none;
@@ -188,6 +191,52 @@
         background: rgba(130, 50, 175, 0.88);
         border-color: rgba(180, 90, 230, 0.88);
         box-shadow: 0 0 20px rgba(180, 80, 255, 0.22);
+      }
+
+      #tc-x {
+        background: rgba(60, 120, 205, 0.88);
+        border-color: rgba(110, 170, 255, 0.88);
+        box-shadow: 0 0 18px rgba(100, 160, 255, 0.22);
+      }
+
+      #tc-y {
+        background: rgba(195, 160, 20, 0.88);
+        border-color: rgba(250, 220, 70, 0.88);
+        box-shadow: 0 0 18px rgba(240, 210, 50, 0.22);
+      }
+
+      /* ─── SHOULDER BUTTONS  (L / R) ─── */
+      .tc-shoulder-btn {
+        border-radius: 12px;
+        border: 2px solid;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: -apple-system, sans-serif;
+        font-size: 14px;
+        font-weight: 900;
+        letter-spacing: 1px;
+        transition: filter 0.07s;
+        cursor: pointer;
+      }
+
+      .tc-shoulder-btn.pressed {
+        filter: brightness(1.45);
+        transform: translate(-50%, -50%) scale(1.1) !important;
+      }
+
+      #tc-l {
+        background: rgba(42, 95, 140, 0.88);
+        border-color: rgba(80, 150, 210, 0.8);
+        color: rgba(180, 220, 255, 0.95);
+        box-shadow: 0 0 14px rgba(70, 140, 220, 0.2);
+      }
+
+      #tc-r {
+        background: rgba(140, 55, 42, 0.88);
+        border-color: rgba(210, 100, 80, 0.8);
+        color: rgba(255, 200, 180, 0.95);
+        box-shadow: 0 0 14px rgba(220, 90, 70, 0.2);
       }
 
       .tc-action-btn .btn-label {
@@ -372,6 +421,30 @@
         <div class="tc-resize-handle">⤡</div>
       </button>
 
+      <!-- X Button (Semicolon) -->
+      <button class="tc-btn tc-action-btn" id="tc-x">
+        <span class="btn-label">X</span>
+        <div class="tc-resize-handle">⤡</div>
+      </button>
+
+      <!-- Y Button (Space / run alternate) -->
+      <button class="tc-btn tc-action-btn" id="tc-y">
+        <span class="btn-label">Y</span>
+        <div class="tc-resize-handle">⤡</div>
+      </button>
+
+      <!-- L Shoulder Button -->
+      <button class="tc-btn tc-shoulder-btn" id="tc-l">
+        L
+        <div class="tc-resize-handle">⤡</div>
+      </button>
+
+      <!-- R Shoulder Button -->
+      <button class="tc-btn tc-shoulder-btn" id="tc-r">
+        R
+        <div class="tc-resize-handle">⤡</div>
+      </button>
+
       <!-- START Button (Pause menu) -->
       <button class="tc-btn tc-menu-btn" id="tc-start">
         ▶ MENU
@@ -442,16 +515,24 @@
             enabled: isTouchDevice,
             buttons: landscape ? {
               dpad:   { cx: 13,  cy: 75, size: 148 },
-              a:      { cx: 83,  cy: 73, size: 78  },
-              b:      { cx: 90,  cy: 85, size: 78  },
-              start:  { cx: 60,  cy: 91, w: 78,  h: 36 },
-              select: { cx: 48,  cy: 91, w: 78,  h: 36 },
+              a:      { cx: 87,  cy: 73, size: 74  },
+              b:      { cx: 93,  cy: 84, size: 74  },
+              x:      { cx: 80,  cy: 73, size: 64  },
+              y:      { cx: 87,  cy: 84, size: 64  },
+              l:      { cx: 8,   cy: 17, w: 78, h: 32 },
+              r:      { cx: 92,  cy: 17, w: 78, h: 32 },
+              start:  { cx: 60,  cy: 92, w: 76,  h: 34 },
+              select: { cx: 47,  cy: 92, w: 76,  h: 34 },
             } : {
               dpad:   { cx: 18,  cy: 80, size: 148 },
-              a:      { cx: 80,  cy: 78, size: 78  },
-              b:      { cx: 88,  cy: 88, size: 78  },
-              start:  { cx: 60,  cy: 93, w: 78,  h: 36 },
-              select: { cx: 46,  cy: 93, w: 78,  h: 36 },
+              a:      { cx: 84,  cy: 79, size: 74  },
+              b:      { cx: 91,  cy: 88, size: 74  },
+              x:      { cx: 77,  cy: 79, size: 64  },
+              y:      { cx: 84,  cy: 88, size: 64  },
+              l:      { cx: 7,   cy: 13, w: 70, h: 30 },
+              r:      { cx: 93,  cy: 13, w: 70, h: 30 },
+              start:  { cx: 60,  cy: 95, w: 74,  h: 34 },
+              select: { cx: 45,  cy: 95, w: 74,  h: 34 },
             }
           };
         }
@@ -493,8 +574,8 @@
         const resetBtn   = document.getElementById('touch-reset-btn');
         const fsBtn      = document.getElementById('fullscreen-btn');
 
-        const BTN_IDS  = ['tc-dpad', 'tc-a', 'tc-b', 'tc-start', 'tc-select'];
-        const BTN_KEYS = ['dpad',    'a',    'b',    'start',    'select'];
+        const BTN_IDS  = ['tc-dpad', 'tc-a', 'tc-b', 'tc-x', 'tc-y', 'tc-l', 'tc-r', 'tc-start', 'tc-select'];
+        const BTN_KEYS = ['dpad',    'a',    'b',    'x',    'y',    'l',    'r',    'start',    'select'];
 
         /* ─────────────────────────────────────────
            APPLY LAYOUT → DOM
@@ -504,6 +585,10 @@
           if (!el) return;
           const x = (spec.cx / 100) * window.innerWidth;
           const y = (spec.cy / 100) * window.innerHeight;
+          // Sync D-pad arrow/dot scaling CSS property
+          if (id === 'tc-dpad' && spec.size) {
+            el.style.setProperty('--dpad-sz', spec.size + 'px');
+          }
           el.style.left = x + 'px';
           el.style.top  = y + 'px';
           if (spec.size !== undefined) {
@@ -657,6 +742,51 @@
         setupPressBtn('tc-select', 'select');
 
         /* ─────────────────────────────────────────
+           SYNTHETIC KEY BUTTONS  (X, Y, L, R)
+           Dispatch real KeyboardEvents so Phaser's
+           keyboard plugin picks them up directly —
+           matches what GamepadManager does for these
+           same actions from a real controller.
+           X → Semicolon | Y → Space
+           L → Slash     | R → KeyQ (spawn-shift)
+           ───────────────────────────────────────── */
+        function dispatchSyntheticKey(code, isDown) {
+          const type = isDown ? 'keydown' : 'keyup';
+          const key  = code === 'Space' ? ' ' : code.replace(/^Key/, '');
+          window.dispatchEvent(new KeyboardEvent(type, {
+            code, key, bubbles: true, cancelable: true
+          }));
+        }
+
+        function setupSyntheticBtn(id, keyCode) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          function press(e) {
+            if (overlay.classList.contains('edit-mode')) return;
+            e.preventDefault();
+            el.classList.add('pressed');
+            dispatchSyntheticKey(keyCode, true);
+          }
+          function release(e) {
+            if (overlay.classList.contains('edit-mode')) return;
+            e.preventDefault();
+            el.classList.remove('pressed');
+            dispatchSyntheticKey(keyCode, false);
+          }
+          el.addEventListener('touchstart',  press,   { passive: false });
+          el.addEventListener('touchend',    release, { passive: false });
+          el.addEventListener('touchcancel', release, { passive: false });
+          el.addEventListener('mousedown',   press);
+          el.addEventListener('mouseup',     release);
+          el.addEventListener('mouseleave',  release);
+        }
+
+        setupSyntheticBtn('tc-x', 'Semicolon');
+        setupSyntheticBtn('tc-y', 'Space');
+        setupSyntheticBtn('tc-l', 'Slash');
+        setupSyntheticBtn('tc-r', 'KeyQ');
+
+        /* ─────────────────────────────────────────
            EDIT MODE
            ───────────────────────────────────────── */
         let editMode = false;
@@ -788,7 +918,7 @@
           let resizing = false;
           let rTid     = null;
           let rx0, ry0, rw0, rh0;
-          const isSquare = (id === 'tc-dpad' || id === 'tc-a' || id === 'tc-b');
+          const isSquare = ['tc-dpad', 'tc-a', 'tc-b', 'tc-x', 'tc-y'].includes(id);
 
           function startResize(cx, cy) {
             resizing = true;
@@ -806,6 +936,10 @@
               const ns = Math.max(48, rw0 + (dx + dy) / 2 * 1.4);
               el.style.width  = ns + 'px';
               el.style.height = ns + 'px';
+              // Keep D-pad arrow/dot sizes in sync with the container
+              if (id === 'tc-dpad') {
+                el.style.setProperty('--dpad-sz', ns + 'px');
+              }
             } else {
               el.style.width  = Math.max(60, rw0 + dx) + 'px';
               el.style.height = Math.max(30, rh0 + dy) + 'px';
