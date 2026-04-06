@@ -147,7 +147,6 @@ export class TitleScreen extends Phaser.Scene {
     
     // Create menu items data - removed "REPLAY INTRO" (now in Cutscenes gallery)
     const menuItems = [
-      { text: "TUTORIAL WORLD", callback: () => this.openTutorialWorld(), color: 0x00ffff },
       { text: "WORLD TOUR", callback: () => this.openWorldTour(), color: 0xff69b4 },
       { text: "QUICK PLAY", callback: () => this.startGame(), color: 0x00ff88 },
       { text: "MUSIC LIBRARY", callback: () => this.openLibrary(), color: 0x00ff88 },
@@ -665,13 +664,6 @@ export class TitleScreen extends Phaser.Scene {
   }
 
   openWorldTour() {
-    // Check if tutorial world is completed (required for Story Mode)
-    // Dev mode bypasses this requirement
-    if (!DevModeManager.isDevMode() && !WorldManager.isTutorialWorldCompleted()) {
-      this.showTutorialRequiredMessage()
-      return
-    }
-
     BGMManager.stop()
     
     // Check if intro has been watched this session
