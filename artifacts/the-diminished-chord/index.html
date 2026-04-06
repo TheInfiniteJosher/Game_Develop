@@ -80,7 +80,7 @@
       .tc-btn {
         position: absolute;
         pointer-events: auto;
-        touch-action: none;
+        touch-action: manipulation; /* allows pinch-to-zoom; blocks accidental scroll */
         user-select: none;
         -webkit-user-select: none;
         /* centered on left/top coordinates */
@@ -1019,10 +1019,11 @@
         window.addEventListener('orientationchange', () => setTimeout(applyLayout, 150));
 
         /* ─────────────────────────────────────────
-           PREVENT SCROLL / PINCH-ZOOM ON BODY
+           PREVENT SCROLL ON BODY (allow pinch-to-zoom)
            ───────────────────────────────────────── */
         document.body.addEventListener('touchmove', (e) => {
-          e.preventDefault();
+          // Only block single-finger scroll; let 2-finger pinch zoom pass through
+          if (e.touches.length < 2) e.preventDefault();
         }, { passive: false });
 
       })();
