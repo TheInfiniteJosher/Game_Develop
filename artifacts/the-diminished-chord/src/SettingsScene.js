@@ -83,9 +83,9 @@ export class SettingsScene extends Phaser.Scene {
     // Panel background
     this.panelBg = this.add.rectangle(
       this.cameras.main.width / 2,
-      this.cameras.main.height / 2 + 20,
+      this.cameras.main.height / 2 + 25,
       520,
-      420,
+      470,
       0x1a1a2e,
       0.9
     ).setStrokeStyle(2, 0x333366)
@@ -205,8 +205,11 @@ export class SettingsScene extends Phaser.Scene {
     // CONFIGURE CONTROLS BUTTON - opens detailed controls settings
     this.createControlsConfigButton(centerX, startY - 60)
 
+    // ── ON-SCREEN TOUCH CONTROLS TOGGLE ──────────────────────────
+    this.createMobileControlsRow(centerX, startY - 15)
+
     // Section header
-    const header = this.add.text(centerX, startY + 10, "Premium Features", {
+    const header = this.add.text(centerX, startY + 60, "Premium Features", {
       fontFamily: "RetroPixel",
       fontSize: "18px",
       color: "#ffffff"
@@ -214,7 +217,7 @@ export class SettingsScene extends Phaser.Scene {
     this.controlsContainer.add(header)
 
     // Description
-    const desc = this.add.text(centerX, startY + 40, "Unlockable movement enhancements", {
+    const desc = this.add.text(centerX, startY + 85, "Unlockable movement enhancements", {
       fontFamily: "RetroPixel",
       fontSize: "12px",
       color: "#888888"
@@ -224,7 +227,7 @@ export class SettingsScene extends Phaser.Scene {
     // Auto-Ricochet toggle
     this.createFeatureToggle(
       centerX,
-      startY + 100,
+      startY + 140,
       "AUTO-RICOCHET",
       "Hold jump while wall-sliding for turbo wall jumps",
       () => this.isAutoRicochetUnlocked(),
@@ -235,7 +238,7 @@ export class SettingsScene extends Phaser.Scene {
     // Spawn Shifting toggle
     this.createFeatureToggle(
       centerX,
-      startY + 190,
+      startY + 225,
       "SPAWN SHIFTING",
       "Press Q during gameplay to set respawn point",
       () => this.isSpawnShiftingUnlocked(),
@@ -245,13 +248,92 @@ export class SettingsScene extends Phaser.Scene {
 
     // Developer note if in dev mode
     if (DevModeManager.isDevMode()) {
-      const devNote = this.add.text(centerX, startY + 280, "🔧 DEV MODE: All features unlocked", {
+      const devNote = this.add.text(centerX, startY + 310, "🔧 DEV MODE: All features unlocked", {
         fontFamily: "RetroPixel",
         fontSize: "11px",
         color: "#ff00ff"
       }).setOrigin(0.5)
       this.controlsContainer.add(devNote)
     }
+  }
+
+  /**
+   * ON-SCREEN TOUCH CONTROLS toggle row
+   */
+  createMobileControlsRow(centerX, y) {
+    const isTouchDevice = (
+      'ontouchstart' in window ||
+      navigator.maxTouchPoints > 0
+    )
+
+    // Label
+    const label = this.add.text(centerX - 180, y, "ON-SCREEN CONTROLS", {
+      fontFamily: "RetroPixel",
+      fontSize: "13px",
+      color: "#ffffff"
+    }).setOrigin(0, 0.5)
+    this.controlsContainer.add(label)
+
+    const subLabel = this.add.text(centerX - 180, y + 18, "Virtual buttons for touchscreen play", {
+      fontFamily: "RetroPixel",
+      fontSize: "9px",
+      color: "#666666"
+    }).setOrigin(0, 0.5)
+    this.controlsContainer.add(subLabel)
+
+    // Read current state
+    const initialOn = typeof window.getMobileControlsEnabled === 'function'
+      ? window.getMobileControlsEnabled()
+      : isTouchDevice
+
+    // Toggle switch
+    const toggle = this.createToggleSwitch(
+      centerX + 160, y,
+      initialOn,
+      (enabled) => {
+        if (typeof window.setMobileControlsEnabled === 'function') {
+          window.setMobileControlsEnabled(enabled)
+        }
+      }
+    )
+    toggle.elements.forEach(el => this.controlsContainer.add(el))
+
+    // "Customise" hint button — only on touch devices
+    if (isTouchDevice) {
+      const hintBg = this.add.rectangle(centerX + 160, y + 38, 120, 22, 0x1a1a3a, 0.9)
+        .setStrokeStyle(1, 0x004477)
+      const hintText = this.add.text(centerX + 160, y + 38, "✏ EDIT LAYOUT", {
+        fontFamily: "RetroPixel",
+        fontSize: "9px",
+        color: "#0088cc"
+      }).setOrigin(0.5)
+      this.controlsContainer.add(hintBg)
+      this.controlsContainer.add(hintText)
+      hintBg.setInteractive({ useHandCursor: true })
+      hintBg.on("pointerdown", () => {
+        // Dismiss settings and enter edit mode
+        if (typeof window.__enterTouchEditMode === 'function') {
+          window.__enterTouchEditMode()
+        }
+        this.scene.stop()
+      })
+      hintBg.on("pointerover", () => {
+        hintBg.setStrokeStyle(1, 0x00aaff)
+        hintText.setColor("#00ccff")
+      })
+      hintBg.on("pointerout", () => {
+        hintBg.setStrokeStyle(1, 0x004477)
+        hintText.setColor("#0088cc")
+      })
+    }
+
+    // Separator line below the row
+    const sep = this.add.graphics()
+    sep.lineStyle(1, 0x222244, 0.8)
+    sep.moveTo(centerX - 230, y + 52)
+    sep.lineTo(centerX + 230, y + 52)
+    sep.strokePath()
+    this.controlsContainer.add(sep)
   }
 
   /**

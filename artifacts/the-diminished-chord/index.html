@@ -9,7 +9,7 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="google-adsense-account" content="ca-pub-8959470748899668">
     <title>The Diminished Chord</title>
-    
+
     <script type="module" src="/src/main.js"></script>
 
     <script
@@ -31,7 +31,7 @@
         -webkit-tap-highlight-color: transparent;
         touch-action: manipulation;
       }
-      
+
       html, body {
         background: #0a0a0f;
         margin: 0;
@@ -43,703 +43,836 @@
         top: 0;
         left: 0;
       }
-      
-      /* Main game container - Phaser inserts canvas here */
+
       #game-container {
         position: absolute;
-        top: 0;
-        left: 0;
+        top: 0; left: 0;
         width: 100%;
         height: 100%;
       }
-      
-      /* Mobile controls - positioned dynamically via JS */
-      #mobile-controls-portrait {
+
+      /* ─────────────────────────────────────────
+         TOUCH OVERLAY  — full screen, z 1000
+         Individual buttons opt in to pointer-events
+         ───────────────────────────────────────── */
+      #touch-overlay {
         position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        display: none;
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-        padding: 8px 5px;
-        padding-bottom: max(8px, env(safe-area-inset-bottom));
-        background: linear-gradient(to bottom, rgba(10, 10, 15, 0.85), rgba(10, 10, 15, 0.95));
-        z-index: 1000;
-      }
-      
-      #mobile-controls-left {
-        position: fixed;
-        left: 0;
-        top: 0;
-        bottom: 0;
-        display: none;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 10px;
-        padding-left: max(10px, env(safe-area-inset-left));
-        background: linear-gradient(to right, rgba(10, 10, 15, 0.9), rgba(10, 10, 15, 0.7));
-        z-index: 1000;
-      }
-      
-      #mobile-controls-right {
-        position: fixed;
-        right: 0;
-        top: 0;
-        bottom: 0;
-        display: none;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 10px;
-        padding-right: max(10px, env(safe-area-inset-right));
-        background: linear-gradient(to left, rgba(10, 10, 15, 0.9), rgba(10, 10, 15, 0.7));
-        z-index: 1000;
-      }
-      
-      /* D-Pad container - uses touch area for swipe detection */
-      .dpad-container {
-        position: relative;
-        width: 140px;
-        height: 140px;
-        flex-shrink: 0;
-        touch-action: none;
-      }
-      
-      /* D-Pad visual background */
-      .dpad-bg {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 100%;
-        height: 100%;
-        background: radial-gradient(circle, rgba(40, 40, 60, 0.6) 0%, transparent 70%);
-        border-radius: 50%;
+        inset: 0;
         pointer-events: none;
+        z-index: 1000;
+        overflow: visible;
       }
-      
-      .dpad-btn {
+
+      /* Every on-screen control element */
+      .tc-btn {
         position: absolute;
-        width: 48px;
-        height: 48px;
-        background: rgba(60, 60, 80, 0.95);
-        border: 2px solid rgba(100, 100, 120, 0.8);
-        border-radius: 10px;
+        pointer-events: auto;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        /* centered on left/top coordinates */
+        transform: translate(-50%, -50%);
+        transition: box-shadow 0.12s;
+      }
+
+      /* ─── Edit mode — highlight every button ─── */
+      #touch-overlay.edit-mode .tc-btn {
+        outline: 2px solid rgba(0, 220, 255, 0.75);
+        border-radius: 14px !important;
+        box-shadow: 0 0 22px rgba(0, 200, 255, 0.35) !important;
+      }
+
+      /* Resize corner handle */
+      .tc-resize-handle {
+        position: absolute;
+        bottom: -6px;
+        right: -6px;
+        width: 26px;
+        height: 26px;
+        background: rgba(0, 220, 255, 0.92);
+        border-radius: 6px;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+        color: #000;
+        font-weight: bold;
+        cursor: se-resize;
+        z-index: 20;
+        touch-action: none;
+        pointer-events: auto;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      }
+      #touch-overlay.edit-mode .tc-resize-handle { display: flex; }
+
+      /* ─────────────────────────────────────────
+         D-PAD
+         ───────────────────────────────────────── */
+      #tc-dpad {
+        border-radius: 50%;
+        background: radial-gradient(circle at 50% 50%,
+          rgba(35, 35, 60, 0.78) 0%,
+          rgba(10, 10, 22, 0.55) 75%,
+          transparent 100%);
+      }
+
+      .dpad-arrow {
+        position: absolute;
+        width: 44px;
+        height: 44px;
         display: flex;
         align-items: center;
         justify-content: center;
-        color: #888899;
-        font-family: sans-serif;
-        font-size: 20px;
-        user-select: none;
-        transition: background 0.08s, transform 0.05s;
-        pointer-events: none; /* D-pad buttons are visual only - container handles touch */
+        border-radius: 10px;
+        background: rgba(45, 45, 75, 0.88);
+        border: 1.5px solid rgba(110, 110, 155, 0.55);
+        color: rgba(170, 170, 210, 0.9);
+        font-size: 18px;
+        pointer-events: none;
+        transition: background 0.06s, color 0.06s, transform 0.05s;
       }
-      
-      .dpad-btn.pressed {
-        background: rgba(0, 200, 200, 0.5);
-        color: #00ffff;
-        transform: scale(0.93);
+
+      .dpad-arrow.pressed {
+        background: rgba(0, 190, 255, 0.38);
+        border-color: rgba(0, 230, 255, 0.7);
+        color: #00eeff;
       }
-      
-      .dpad-up { top: 2px; left: 50%; transform: translateX(-50%); }
-      .dpad-down { bottom: 2px; left: 50%; transform: translateX(-50%); }
-      .dpad-left { left: 2px; top: 50%; transform: translateY(-50%); }
-      .dpad-right { right: 2px; top: 50%; transform: translateY(-50%); }
-      
-      .dpad-up.pressed { transform: translateX(-50%) scale(0.93); }
-      .dpad-down.pressed { transform: translateX(-50%) scale(0.93); }
-      .dpad-left.pressed { transform: translateY(-50%) scale(0.93); }
-      .dpad-right.pressed { transform: translateY(-50%) scale(0.93); }
-      
-      .dpad-center {
+
+      .dpad-up    { top: 4px;  left: 50%; transform: translateX(-50%); }
+      .dpad-down  { bottom: 4px; left: 50%; transform: translateX(-50%); }
+      .dpad-left  { left: 4px;  top: 50%; transform: translateY(-50%); }
+      .dpad-right { right: 4px; top: 50%; transform: translateY(-50%); }
+
+      .dpad-up.pressed    { transform: translateX(-50%) scale(0.88); }
+      .dpad-down.pressed  { transform: translateX(-50%) scale(0.88); }
+      .dpad-left.pressed  { transform: translateY(-50%) scale(0.88); }
+      .dpad-right.pressed { transform: translateY(-50%) scale(0.88); }
+
+      .dpad-center-dot {
         position: absolute;
-        top: 50%;
-        left: 50%;
+        top: 50%; left: 50%;
         transform: translate(-50%, -50%);
-        width: 32px;
-        height: 32px;
-        background: rgba(50, 50, 70, 1);
+        width: 30px; height: 30px;
+        background: rgba(38, 38, 65, 0.95);
         border-radius: 50%;
         pointer-events: none;
       }
-      
-      /* Action buttons (A/B) - LARGER sizes */
-      .action-btn {
-        width: 80px;
-        height: 80px;
+
+      /* ─────────────────────────────────────────
+         ACTION BUTTONS  (A / B)
+         ───────────────────────────────────────── */
+      .tc-action-btn {
         border-radius: 50%;
         border: 3px solid;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        user-select: none;
-        transition: transform 0.05s, filter 0.08s;
-        font-family: sans-serif;
-        flex-shrink: 0;
+        font-family: -apple-system, sans-serif;
+        transition: filter 0.07s;
+        cursor: pointer;
       }
-      
-      .action-btn:active, .action-btn.pressed {
-        transform: scale(1.12);
-        filter: brightness(1.3);
+
+      .tc-action-btn.pressed {
+        filter: brightness(1.45);
+        transform: translate(-50%, -50%) scale(1.14) !important;
       }
-      
-      .btn-a {
-        background: rgba(68, 170, 136, 0.85);
-        border-color: rgba(102, 204, 170, 0.9);
+
+      #tc-a {
+        background: rgba(28, 145, 100, 0.88);
+        border-color: rgba(60, 200, 150, 0.88);
+        box-shadow: 0 0 20px rgba(40, 210, 140, 0.22);
       }
-      
-      .btn-b {
-        background: rgba(136, 68, 170, 0.85);
-        border-color: rgba(170, 102, 204, 0.9);
+
+      #tc-b {
+        background: rgba(130, 50, 175, 0.88);
+        border-color: rgba(180, 90, 230, 0.88);
+        box-shadow: 0 0 20px rgba(180, 80, 255, 0.22);
       }
-      
-      .action-btn .label {
-        color: white;
-        font-size: 24px;
-        font-weight: bold;
+
+      .tc-action-btn .btn-label {
+        color: #fff;
+        font-size: 22px;
+        font-weight: 900;
+        line-height: 1;
+        pointer-events: none;
       }
-      
-      .action-btn .sublabel {
-        color: rgba(255,255,255,0.7);
+
+      .tc-action-btn .btn-sub {
+        color: rgba(255,255,255,0.55);
         font-size: 9px;
+        letter-spacing: 0.6px;
         margin-top: 2px;
+        pointer-events: none;
       }
-      
-      /* Menu buttons (Start/Select) - slightly larger */
-      .menu-btn {
-        padding: 10px 18px;
-        background: rgba(68, 68, 102, 0.95);
-        border: 2px solid rgba(102, 102, 136, 0.8);
-        border-radius: 6px;
-        color: #aaaaaa;
-        font-family: sans-serif;
+
+      /* ─────────────────────────────────────────
+         MENU BUTTONS  (START / SELECT)
+         ───────────────────────────────────────── */
+      .tc-menu-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(44, 44, 72, 0.92);
+        border: 1.5px solid rgba(95, 95, 140, 0.65);
+        border-radius: 22px;
+        color: rgba(175, 175, 215, 0.92);
+        font-family: -apple-system, sans-serif;
         font-size: 11px;
-        user-select: none;
-        transition: background 0.08s, color 0.08s;
-        flex-shrink: 0;
+        font-weight: 700;
+        letter-spacing: 1.2px;
+        cursor: pointer;
+        transition: background 0.07s, color 0.07s;
+        white-space: nowrap;
       }
-      
-      .menu-btn:active, .menu-btn.pressed {
-        background: rgba(102, 102, 136, 1);
-        color: white;
+
+      .tc-menu-btn.pressed {
+        background: rgba(90, 90, 135, 1);
+        color: #fff;
+        transform: translate(-50%, -50%) scale(1.07) !important;
       }
-      
-      /* Button groups */
-      .ab-buttons {
-        display: flex;
-        gap: 12px;
+
+      /* ─────────────────────────────────────────
+         EDIT-MODE TOOLBAR  (top-center)
+         ───────────────────────────────────────── */
+      #touch-edit-toolbar {
+        position: fixed;
+        top: max(10px, env(safe-area-inset-top));
+        left: 50%;
+        transform: translateX(-50%);
+        display: none;
         align-items: center;
+        gap: 14px;
+        background: rgba(0, 5, 22, 0.94);
+        border: 1.5px solid rgba(0, 210, 255, 0.55);
+        border-radius: 14px;
+        padding: 9px 18px;
+        z-index: 2002;
+        pointer-events: auto;
+        box-shadow: 0 4px 24px rgba(0, 180, 255, 0.18);
+        white-space: nowrap;
       }
-      
-      .ab-buttons-diagonal {
-        position: relative;
-        width: 170px;
-        height: 120px;
+
+      #touch-edit-toolbar.visible { display: flex; }
+
+      .edit-hint {
+        color: rgba(0, 210, 255, 0.72);
+        font-family: -apple-system, sans-serif;
+        font-size: 11px;
+        letter-spacing: 0.4px;
       }
-      
-      .ab-buttons-diagonal .btn-a {
-        position: absolute;
-        top: 0;
-        right: 0;
+
+      .edit-toolbar-btn {
+        padding: 6px 15px;
+        border-radius: 8px;
+        font-family: -apple-system, sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: filter 0.08s;
       }
-      
-      .ab-buttons-diagonal .btn-b {
-        position: absolute;
-        bottom: 0;
-        left: 0;
-      }
-      
-      .menu-buttons {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        align-items: center;
-      }
-      
-      /* Portrait: SELECT on left, START on right */
-      .menu-buttons-row {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        align-items: center;
-      }
-      
-      /* Fullscreen button */
-      #fullscreen-btn {
+
+      .edit-toolbar-btn:active { filter: brightness(1.3); }
+
+      #touch-done-btn  { background: rgba(0, 200, 100, 0.92); color: #000; }
+      #touch-reset-btn { background: rgba(210, 70, 70, 0.88);  color: #fff; }
+
+      /* ─────────────────────────────────────────
+         FLOATING UI BAR  (top-right corner)
+         fullscreen + edit toggle
+         ───────────────────────────────────────── */
+      #touch-ui-bar {
         position: fixed;
         top: max(10px, env(safe-area-inset-top));
         right: max(10px, env(safe-area-inset-right));
-        z-index: 2000;
+        display: none;
+        flex-direction: row;
+        gap: 8px;
+        z-index: 2001;
+        pointer-events: auto;
+      }
+
+      .ui-bar-btn {
         width: 44px;
         height: 44px;
-        background: rgba(40, 40, 60, 0.9);
-        border: 2px solid rgba(80, 80, 100, 0.8);
-        border-radius: 8px;
-        display: none;
+        background: rgba(22, 22, 40, 0.88);
+        border: 1.5px solid rgba(75, 75, 115, 0.65);
+        border-radius: 11px;
+        display: flex;
         align-items: center;
         justify-content: center;
-        color: #cccccc;
+        color: rgba(180, 180, 220, 0.9);
+        font-size: 18px;
         cursor: pointer;
-        user-select: none;
+        transition: background 0.08s, color 0.08s, border-color 0.08s;
       }
-      
-      #fullscreen-btn:active {
-        background: rgba(60, 60, 80, 1);
-        color: white;
+
+      .ui-bar-btn:active {
+        background: rgba(55, 55, 95, 1);
+        color: #fff;
+        border-color: rgba(0, 200, 255, 0.6);
       }
-      
-      /* Fullscreen icon using SVG */
-      #fullscreen-btn svg {
-        width: 22px;
-        height: 22px;
-        stroke: currentColor;
-        stroke-width: 2;
-        fill: none;
+
+      .ui-bar-btn.edit-active {
+        background: rgba(0, 180, 255, 0.22);
+        border-color: rgba(0, 200, 255, 0.7);
+        color: #00deff;
       }
-      
-      /* Hide fullscreen button when in fullscreen */
-      :fullscreen #fullscreen-btn,
-      :-webkit-full-screen #fullscreen-btn {
-        opacity: 0.3;
-      }
-      
-      :fullscreen #fullscreen-btn:active,
-      :-webkit-full-screen #fullscreen-btn:active {
-        opacity: 1;
-      }
-      
-      /* Landscape-specific sizing */
-      @media (orientation: landscape) {
-        .dpad-container {
-          width: 160px;
-          height: 160px;
-        }
-        .dpad-btn {
-          width: 52px;
-          height: 52px;
-          font-size: 22px;
-        }
-        .dpad-center {
-          width: 36px;
-          height: 36px;
-        }
-        .action-btn {
-          width: 85px;
-          height: 85px;
-        }
-        .action-btn .label {
-          font-size: 26px;
-        }
-        .ab-buttons-diagonal {
-          width: 180px;
-          height: 130px;
-        }
+
+      .ui-bar-btn svg { pointer-events: none; }
+
+      /* swap fullscreen icons */
+      .fs-exit { display: none; }
+      :fullscreen .fs-enter,
+      :-webkit-full-screen .fs-enter { display: none; }
+      :fullscreen .fs-exit,
+      :-webkit-full-screen .fs-exit  { display: block; }
+
+      /* ─────────────────────────────────────────
+         RESPONSIVE ARROW SIZE  (smaller dpad arrows
+         when the dpad is made small by user)
+         ───────────────────────────────────────── */
+      @media (max-width: 420px) {
+        .dpad-arrow { width: 38px; height: 38px; font-size: 15px; }
       }
     </style>
   </head>
   <body>
-    <!-- Phaser canvas container -->
+    <!-- Phaser canvas lands here -->
     <div id="game-container"></div>
-    
-    <!-- Portrait mode controls (bottom of screen) -->
-    <!-- Layout: D-Pad | SELECT/START | B/A buttons -->
-    <div id="mobile-controls-portrait">
-      <!-- D-Pad (left) - container handles touch for swipe behavior -->
-      <div class="dpad-container" id="dpad-portrait">
-        <div class="dpad-bg"></div>
-        <div class="dpad-center"></div>
-        <div class="dpad-btn dpad-up" data-dir="up">▲</div>
-        <div class="dpad-btn dpad-down" data-dir="down">▼</div>
-        <div class="dpad-btn dpad-left" data-dir="left">◀</div>
-        <div class="dpad-btn dpad-right" data-dir="right">▶</div>
+
+    <!-- ─────────────────────────────────────────
+         FREE-FORM TOUCH OVERLAY
+         Each .tc-btn is independently positionable
+         ───────────────────────────────────────── -->
+    <div id="touch-overlay">
+
+      <!-- D-Pad — the whole container handles swipe/slide direction -->
+      <div class="tc-btn" id="tc-dpad">
+        <div class="dpad-arrow dpad-up"    id="dpad-ind-up">▲</div>
+        <div class="dpad-arrow dpad-down"  id="dpad-ind-down">▼</div>
+        <div class="dpad-arrow dpad-left"  id="dpad-ind-left">◀</div>
+        <div class="dpad-arrow dpad-right" id="dpad-ind-right">▶</div>
+        <div class="dpad-center-dot"></div>
+        <div class="tc-resize-handle">⤡</div>
       </div>
-      
-      <!-- Menu buttons (center) - SELECT on top, START on bottom -->
-      <div class="menu-buttons-row">
-        <button class="menu-btn" id="btn-select-p">SELECT</button>
-        <button class="menu-btn" id="btn-start-p">START</button>
-      </div>
-      
-      <!-- A/B buttons (right) - diagonal like SNES -->
-      <div class="ab-buttons-diagonal">
-        <button class="action-btn btn-a" id="btn-a-p">
-          <span class="label">A</span>
-          <span class="sublabel">JUMP</span>
-        </button>
-        <button class="action-btn btn-b" id="btn-b-p">
-          <span class="label">B</span>
-          <span class="sublabel">RUN</span>
-        </button>
-      </div>
+
+      <!-- A Button (Jump / Confirm) -->
+      <button class="tc-btn tc-action-btn" id="tc-a">
+        <span class="btn-label">A</span>
+        <span class="btn-sub">JUMP</span>
+        <div class="tc-resize-handle">⤡</div>
+      </button>
+
+      <!-- B Button (Run / Back) -->
+      <button class="tc-btn tc-action-btn" id="tc-b">
+        <span class="btn-label">B</span>
+        <span class="btn-sub">RUN</span>
+        <div class="tc-resize-handle">⤡</div>
+      </button>
+
+      <!-- START Button (Pause menu) -->
+      <button class="tc-btn tc-menu-btn" id="tc-start">
+        ▶ MENU
+        <div class="tc-resize-handle">⤡</div>
+      </button>
+
+      <!-- SELECT Button (Settings) -->
+      <button class="tc-btn tc-menu-btn" id="tc-select">
+        ⚙ SET
+        <div class="tc-resize-handle">⤡</div>
+      </button>
     </div>
-    
-    <!-- Landscape mode controls (left side) - D-pad + SELECT -->
-    <div id="mobile-controls-left">
-      <div class="dpad-container" id="dpad-landscape">
-        <div class="dpad-bg"></div>
-        <div class="dpad-center"></div>
-        <div class="dpad-btn dpad-up" data-dir="up">▲</div>
-        <div class="dpad-btn dpad-down" data-dir="down">▼</div>
-        <div class="dpad-btn dpad-left" data-dir="left">◀</div>
-        <div class="dpad-btn dpad-right" data-dir="right">▶</div>
-      </div>
-      <div style="height: 25px;"></div>
-      <button class="menu-btn" id="btn-select-l">SELECT</button>
+
+    <!-- Edit-mode toolbar — appears at top when editing layout -->
+    <div id="touch-edit-toolbar">
+      <button class="edit-toolbar-btn" id="touch-reset-btn">↺ RESET</button>
+      <span class="edit-hint">DRAG TO MOVE · DRAG ⤡ TO RESIZE</span>
+      <button class="edit-toolbar-btn" id="touch-done-btn">✓ DONE</button>
     </div>
-    
-    <!-- Landscape mode controls (right side) - START + A/B -->
-    <div id="mobile-controls-right">
-      <button class="menu-btn" id="btn-start-r">START</button>
-      <div style="height: 25px;"></div>
-      <div class="ab-buttons-diagonal">
-        <button class="action-btn btn-a" id="btn-a-l">
-          <span class="label">A</span>
-          <span class="sublabel">JUMP</span>
-        </button>
-        <button class="action-btn btn-b" id="btn-b-l">
-          <span class="label">B</span>
-          <span class="sublabel">RUN</span>
-        </button>
-      </div>
+
+    <!-- Floating utility buttons — top-right corner -->
+    <div id="touch-ui-bar">
+      <!-- Edit layout (touch devices only) -->
+      <button class="ui-bar-btn" id="ctrl-edit-btn" title="Customize touch controls">✏</button>
+      <!-- Fullscreen (all devices) -->
+      <button class="ui-bar-btn" id="fullscreen-btn" title="Toggle fullscreen">
+        <svg class="fs-enter" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+        </svg>
+        <svg class="fs-exit" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+        </svg>
+      </button>
     </div>
-    
-    <!-- Fullscreen button -->
-    <button id="fullscreen-btn" aria-label="Toggle fullscreen">
-      <svg viewBox="0 0 24 24">
-        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-      </svg>
-    </button>
-    
+
     <script>
-      (function() {
-        // Detect touch device
+      (function () {
+        /* ─────────────────────────────────────────
+           DEVICE DETECTION
+           ───────────────────────────────────────── */
         const isTouchDevice = (
           'ontouchstart' in window ||
           navigator.maxTouchPoints > 0 ||
           navigator.msMaxTouchPoints > 0
         );
-        
-        // Virtual controls state (read by Phaser MobileControlsScene)
+
+        /* ─────────────────────────────────────────
+           VIRTUAL CONTROLS STATE  (read by Phaser)
+           ───────────────────────────────────────── */
         window.virtualControlsState = {
-          left: false,
-          right: false,
-          up: false,
-          down: false,
-          a: false,
-          b: false,
-          start: false,
-          select: false
+          left: false, right: false,
+          up: false, down: false,
+          a: false, b: false,
+          start: false, select: false
         };
-        
-        // References to control containers
-        const portraitControls = document.getElementById('mobile-controls-portrait');
-        const leftControls = document.getElementById('mobile-controls-left');
-        const rightControls = document.getElementById('mobile-controls-right');
-        const fullscreenBtn = document.getElementById('fullscreen-btn');
-        
-        // Update controls visibility based on orientation and touch device
-        function updateControlsVisibility() {
-          if (!isTouchDevice) {
-            portraitControls.style.display = 'none';
-            leftControls.style.display = 'none';
-            rightControls.style.display = 'none';
-            fullscreenBtn.style.display = 'none';
-            return;
+
+        /* ─────────────────────────────────────────
+           LAYOUT PERSISTENCE
+           Positions: cx/cy = center as % of screen
+           Sizes: pixels (consistent physical size)
+           ───────────────────────────────────────── */
+        const STORAGE_KEY = 'tdc_mobile_layout_v3';
+
+        function getDefaultLayout() {
+          // Two sensible defaults depending on orientation
+          const landscape = window.innerWidth > window.innerHeight;
+          return {
+            enabled: isTouchDevice,
+            buttons: landscape ? {
+              dpad:   { cx: 13,  cy: 75, size: 148 },
+              a:      { cx: 83,  cy: 73, size: 78  },
+              b:      { cx: 90,  cy: 85, size: 78  },
+              start:  { cx: 60,  cy: 91, w: 78,  h: 36 },
+              select: { cx: 48,  cy: 91, w: 78,  h: 36 },
+            } : {
+              dpad:   { cx: 18,  cy: 80, size: 148 },
+              a:      { cx: 80,  cy: 78, size: 78  },
+              b:      { cx: 88,  cy: 88, size: 78  },
+              start:  { cx: 60,  cy: 93, w: 78,  h: 36 },
+              select: { cx: 46,  cy: 93, w: 78,  h: 36 },
+            }
+          };
+        }
+
+        function loadLayout() {
+          try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+              const saved = JSON.parse(raw);
+              const def = getDefaultLayout();
+              return {
+                enabled: saved.enabled !== undefined ? saved.enabled : def.enabled,
+                buttons: Object.assign({}, def.buttons, saved.buttons)
+              };
+            }
+          } catch (_) {}
+          return getDefaultLayout();
+        }
+
+        function saveLayout() {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+          } catch (_) {}
+          if (typeof window.syncMobileLayout === 'function') {
+            window.syncMobileLayout(layout);
           }
-          
-          fullscreenBtn.style.display = 'flex';
-          
-          const isLandscape = window.innerWidth > window.innerHeight;
-          
-          if (isLandscape) {
-            portraitControls.style.display = 'none';
-            leftControls.style.display = 'flex';
-            rightControls.style.display = 'flex';
-            positionLandscapeControls();
+        }
+
+        let layout = loadLayout();
+
+        /* ─────────────────────────────────────────
+           ELEMENT REFS
+           ───────────────────────────────────────── */
+        const overlay    = document.getElementById('touch-overlay');
+        const uiBar      = document.getElementById('touch-ui-bar');
+        const editToolbar= document.getElementById('touch-edit-toolbar');
+        const editBtn    = document.getElementById('ctrl-edit-btn');
+        const doneBtn    = document.getElementById('touch-done-btn');
+        const resetBtn   = document.getElementById('touch-reset-btn');
+        const fsBtn      = document.getElementById('fullscreen-btn');
+
+        const BTN_IDS  = ['tc-dpad', 'tc-a', 'tc-b', 'tc-start', 'tc-select'];
+        const BTN_KEYS = ['dpad',    'a',    'b',    'start',    'select'];
+
+        /* ─────────────────────────────────────────
+           APPLY LAYOUT → DOM
+           ───────────────────────────────────────── */
+        function applyOneBtn(id, spec) {
+          const el = document.getElementById(id);
+          if (!el) return;
+          const x = (spec.cx / 100) * window.innerWidth;
+          const y = (spec.cy / 100) * window.innerHeight;
+          el.style.left = x + 'px';
+          el.style.top  = y + 'px';
+          if (spec.size !== undefined) {
+            el.style.width  = spec.size + 'px';
+            el.style.height = spec.size + 'px';
           } else {
-            portraitControls.style.display = 'flex';
-            leftControls.style.display = 'none';
-            rightControls.style.display = 'none';
-            positionPortraitControls();
+            el.style.width  = spec.w + 'px';
+            el.style.height = spec.h + 'px';
           }
         }
-        
-        // Position landscape controls to fill side gaps
-        function positionLandscapeControls() {
-          const canvas = document.querySelector('#game-container canvas');
-          if (!canvas) {
-            setTimeout(positionLandscapeControls, 100);
-            return;
-          }
-          
-          const canvasRect = canvas.getBoundingClientRect();
-          const windowWidth = window.innerWidth;
-          
-          const leftSpace = canvasRect.left;
-          const rightSpace = windowWidth - canvasRect.right;
-          
-          leftControls.style.width = Math.max(leftSpace, 180) + 'px';
-          rightControls.style.width = Math.max(rightSpace, 180) + 'px';
+
+        function applyLayout() {
+          BTN_IDS.forEach((id, i) => applyOneBtn(id, layout.buttons[BTN_KEYS[i]]));
         }
-        
-        // Position portrait controls below the canvas
-        function positionPortraitControls() {
-          const canvas = document.querySelector('#game-container canvas');
-          if (!canvas) {
-            setTimeout(positionPortraitControls, 100);
-            return;
-          }
-          
-          const canvasRect = canvas.getBoundingClientRect();
-          const windowHeight = window.innerHeight;
-          const bottomSpace = windowHeight - canvasRect.bottom;
-          
-          portraitControls.style.height = Math.max(bottomSpace, 160) + 'px';
+
+        /* ─────────────────────────────────────────
+           SHOW / HIDE CONTROLS
+           Public API for Phaser settings scene
+           ───────────────────────────────────────── */
+        function setVisible(v) {
+          overlay.style.display = v ? 'block' : 'none';
         }
-        
-        // ============================================
-        // D-PAD SWIPE/SLIDE HANDLING
-        // The D-pad works like a joystick - finger can slide between directions
-        // ============================================
-        
-        function setupDpad(containerId) {
-          const container = document.getElementById(containerId);
-          if (!container) return;
-          
-          let activeTouchId = null;
-          
-          // Get direction based on touch position relative to container center
-          function getDirectionFromTouch(touch) {
-            const rect = container.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            
-            const dx = touch.clientX - centerX;
-            const dy = touch.clientY - centerY;
-            
-            // Dead zone in center (20% of container size)
-            const deadZone = rect.width * 0.15;
-            const distance = Math.sqrt(dx * dx + dy * dy);
-            
-            if (distance < deadZone) {
-              return { up: false, down: false, left: false, right: false };
-            }
-            
-            // Determine primary direction based on angle
-            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
-            
-            // Angle ranges: Right (-45 to 45), Down (45 to 135), Left (135 to 180 or -180 to -135), Up (-135 to -45)
-            const result = { up: false, down: false, left: false, right: false };
-            
-            if (angle >= -45 && angle < 45) {
-              result.right = true;
-            } else if (angle >= 45 && angle < 135) {
-              result.down = true;
-            } else if (angle >= 135 || angle < -135) {
-              result.left = true;
-            } else if (angle >= -135 && angle < -45) {
-              result.up = true;
-            }
-            
-            return result;
-          }
-          
-          function updateDpadState(directions) {
-            window.virtualControlsState.up = directions.up;
-            window.virtualControlsState.down = directions.down;
-            window.virtualControlsState.left = directions.left;
-            window.virtualControlsState.right = directions.right;
-            
-            // Update visual feedback on ALL d-pads
-            document.querySelectorAll('.dpad-up').forEach(btn => {
-              btn.classList.toggle('pressed', directions.up);
-            });
-            document.querySelectorAll('.dpad-down').forEach(btn => {
-              btn.classList.toggle('pressed', directions.down);
-            });
-            document.querySelectorAll('.dpad-left').forEach(btn => {
-              btn.classList.toggle('pressed', directions.left);
-            });
-            document.querySelectorAll('.dpad-right').forEach(btn => {
-              btn.classList.toggle('pressed', directions.right);
-            });
-          }
-          
-          function clearDpad() {
-            updateDpadState({ up: false, down: false, left: false, right: false });
-          }
-          
-          container.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            if (activeTouchId === null && e.changedTouches.length > 0) {
-              const touch = e.changedTouches[0];
-              activeTouchId = touch.identifier;
-              const dirs = getDirectionFromTouch(touch);
-              updateDpadState(dirs);
-            }
-          }, { passive: false });
-          
-          container.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            for (let i = 0; i < e.changedTouches.length; i++) {
-              const touch = e.changedTouches[i];
-              if (touch.identifier === activeTouchId) {
-                const dirs = getDirectionFromTouch(touch);
-                updateDpadState(dirs);
-                break;
-              }
-            }
-          }, { passive: false });
-          
-          container.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            for (let i = 0; i < e.changedTouches.length; i++) {
-              if (e.changedTouches[i].identifier === activeTouchId) {
-                activeTouchId = null;
-                clearDpad();
-                break;
-              }
-            }
-          }, { passive: false });
-          
-          container.addEventListener('touchcancel', (e) => {
-            activeTouchId = null;
-            clearDpad();
-          }, { passive: false });
-          
-          // Mouse support for testing on desktop
-          let mouseDown = false;
-          
-          container.addEventListener('mousedown', (e) => {
-            mouseDown = true;
-            const rect = container.getBoundingClientRect();
-            const fakeTouch = { clientX: e.clientX, clientY: e.clientY };
-            const dirs = getDirectionFromTouch(fakeTouch);
-            updateDpadState(dirs);
-          });
-          
-          container.addEventListener('mousemove', (e) => {
-            if (mouseDown) {
-              const fakeTouch = { clientX: e.clientX, clientY: e.clientY };
-              const dirs = getDirectionFromTouch(fakeTouch);
-              updateDpadState(dirs);
-            }
-          });
-          
-          container.addEventListener('mouseup', () => {
-            mouseDown = false;
-            clearDpad();
-          });
-          
-          container.addEventListener('mouseleave', () => {
-            if (mouseDown) {
-              mouseDown = false;
-              clearDpad();
-            }
-          });
-        }
-        
-        // Setup both D-pads
-        setupDpad('dpad-portrait');
-        setupDpad('dpad-landscape');
-        
-        // ============================================
-        // BUTTON HANDLERS (A, B, START, SELECT)
-        // ============================================
-        
-        function setupButton(selectors, stateKey) {
-          const buttons = document.querySelectorAll(selectors);
-          buttons.forEach(btn => {
-            const handleStart = (e) => {
-              e.preventDefault();
-              window.virtualControlsState[stateKey] = true;
-              document.querySelectorAll(selectors).forEach(b => b.classList.add('pressed'));
+
+        window.getMobileControlsEnabled = () => layout.enabled;
+        window.setMobileControlsEnabled = (v) => {
+          layout.enabled = !!v;
+          setVisible(layout.enabled);
+          saveLayout();
+        };
+
+        // Always show UI bar on touch; show fullscreen btn on all
+        uiBar.style.display = 'flex';
+        if (editBtn) editBtn.style.display = isTouchDevice ? 'flex' : 'none';
+
+        setVisible(layout.enabled);
+        applyLayout();
+
+        /* ─────────────────────────────────────────
+           D-PAD  — angle-based swipe/slide detection
+           ───────────────────────────────────────── */
+        (function setupDpad() {
+          const dpad = document.getElementById('tc-dpad');
+          if (!dpad) return;
+
+          let touchId = null;
+
+          function angle2dirs(touch) {
+            const r  = dpad.getBoundingClientRect();
+            const cx = r.left + r.width / 2;
+            const cy = r.top  + r.height / 2;
+            const dx = touch.clientX - cx;
+            const dy = touch.clientY - cy;
+            const dead = r.width * 0.15;
+            if (Math.hypot(dx, dy) < dead)
+              return { up:false, down:false, left:false, right:false };
+            const a = Math.atan2(dy, dx) * 180 / Math.PI;
+            return {
+              right: a >= -45 && a < 45,
+              down:  a >= 45  && a < 135,
+              left:  a >= 135 || a < -135,
+              up:    a >= -135 && a < -45
             };
-            
-            const handleEnd = (e) => {
-              e.preventDefault();
-              window.virtualControlsState[stateKey] = false;
-              document.querySelectorAll(selectors).forEach(b => b.classList.remove('pressed'));
-            };
-            
-            btn.addEventListener('touchstart', handleStart, { passive: false });
-            btn.addEventListener('touchend', handleEnd, { passive: false });
-            btn.addEventListener('touchcancel', handleEnd, { passive: false });
-            
-            btn.addEventListener('mousedown', handleStart);
-            btn.addEventListener('mouseup', handleEnd);
-            btn.addEventListener('mouseleave', handleEnd);
-          });
-        }
-        
-        // Setup A/B buttons (both portrait and landscape)
-        setupButton('#btn-a-p, #btn-a-l', 'a');
-        setupButton('#btn-b-p, #btn-b-l', 'b');
-        
-        // Setup START/SELECT buttons (both portrait and landscape)
-        // Portrait: btn-start-p, btn-select-p
-        // Landscape: btn-start-r (right side), btn-select-l (left side)
-        setupButton('#btn-start-p, #btn-start-r', 'start');
-        setupButton('#btn-select-p, #btn-select-l', 'select');
-        
-        // Fullscreen toggle
-        if (fullscreenBtn) {
-          fullscreenBtn.addEventListener('click', function(e) {
+          }
+
+          function applyDirs(d) {
+            window.virtualControlsState.up    = d.up;
+            window.virtualControlsState.down  = d.down;
+            window.virtualControlsState.left  = d.left;
+            window.virtualControlsState.right = d.right;
+            document.getElementById('dpad-ind-up').classList.toggle('pressed',    d.up);
+            document.getElementById('dpad-ind-down').classList.toggle('pressed',  d.down);
+            document.getElementById('dpad-ind-left').classList.toggle('pressed',  d.left);
+            document.getElementById('dpad-ind-right').classList.toggle('pressed', d.right);
+          }
+
+          function clearDirs() {
+            applyDirs({up:false, down:false, left:false, right:false});
+          }
+
+          dpad.addEventListener('touchstart', (e) => {
+            if (overlay.classList.contains('edit-mode')) return;
             e.preventDefault();
-            const elem = document.documentElement;
-            
-            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-              if (elem.requestFullscreen) {
-                elem.requestFullscreen({ navigationUI: 'hide' });
-              } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen();
-              }
+            if (touchId === null) {
+              touchId = e.changedTouches[0].identifier;
+              applyDirs(angle2dirs(e.changedTouches[0]));
+            }
+          }, { passive: false });
+
+          dpad.addEventListener('touchmove', (e) => {
+            if (overlay.classList.contains('edit-mode')) return;
+            e.preventDefault();
+            for (let t of e.changedTouches) {
+              if (t.identifier === touchId) { applyDirs(angle2dirs(t)); break; }
+            }
+          }, { passive: false });
+
+          dpad.addEventListener('touchend', (e) => {
+            if (overlay.classList.contains('edit-mode')) return;
+            e.preventDefault();
+            for (let t of e.changedTouches) {
+              if (t.identifier === touchId) { touchId = null; clearDirs(); break; }
+            }
+          }, { passive: false });
+
+          dpad.addEventListener('touchcancel', () => { touchId = null; clearDirs(); });
+
+          // Mouse support (desktop testing)
+          let mdown = false;
+          dpad.addEventListener('mousedown', (e) => {
+            if (overlay.classList.contains('edit-mode')) return;
+            mdown = true;
+            applyDirs(angle2dirs(e));
+          });
+          dpad.addEventListener('mousemove', (e) => {
+            if (mdown) applyDirs(angle2dirs(e));
+          });
+          document.addEventListener('mouseup', () => { if (mdown) { mdown = false; clearDirs(); } });
+        })();
+
+        /* ─────────────────────────────────────────
+           ACTION BUTTONS  (A, B, START, SELECT)
+           ───────────────────────────────────────── */
+        function setupPressBtn(id, key) {
+          const el = document.getElementById(id);
+          if (!el) return;
+
+          function press(e) {
+            if (overlay.classList.contains('edit-mode')) return;
+            e.preventDefault();
+            window.virtualControlsState[key] = true;
+            el.classList.add('pressed');
+          }
+          function release(e) {
+            if (overlay.classList.contains('edit-mode')) return;
+            e.preventDefault();
+            window.virtualControlsState[key] = false;
+            el.classList.remove('pressed');
+          }
+
+          el.addEventListener('touchstart',  press,   { passive: false });
+          el.addEventListener('touchend',    release, { passive: false });
+          el.addEventListener('touchcancel', release, { passive: false });
+          el.addEventListener('mousedown',   press);
+          el.addEventListener('mouseup',     release);
+          el.addEventListener('mouseleave',  release);
+        }
+
+        setupPressBtn('tc-a',      'a');
+        setupPressBtn('tc-b',      'b');
+        setupPressBtn('tc-start',  'start');
+        setupPressBtn('tc-select', 'select');
+
+        /* ─────────────────────────────────────────
+           EDIT MODE
+           ───────────────────────────────────────── */
+        let editMode = false;
+
+        function enterEdit() {
+          editMode = true;
+          overlay.classList.add('edit-mode');
+          editToolbar.classList.add('visible');
+          if (editBtn) { editBtn.textContent = '✕'; editBtn.classList.add('edit-active'); }
+        }
+
+        function exitEdit() {
+          editMode = false;
+          overlay.classList.remove('edit-mode');
+          editToolbar.classList.remove('visible');
+          if (editBtn) { editBtn.textContent = '✏'; editBtn.classList.remove('edit-active'); }
+          snapshotLayout();
+        }
+
+        function snapshotLayout() {
+          BTN_IDS.forEach((id, i) => {
+            const el  = document.getElementById(id);
+            if (!el) return;
+            const r   = el.getBoundingClientRect();
+            const cx  = ((r.left + r.width  / 2) / window.innerWidth)  * 100;
+            const cy  = ((r.top  + r.height / 2) / window.innerHeight) * 100;
+            const key = BTN_KEYS[i];
+            const cur = layout.buttons[key];
+            if (cur.size !== undefined) {
+              layout.buttons[key] = { cx, cy, size: r.width };
             } else {
-              if (document.exitFullscreen) {
-                document.exitFullscreen();
-              } else if (document.webkitExitFullscreen) {
-                document.webkitExitFullscreen();
-              }
+              layout.buttons[key] = { cx, cy, w: r.width, h: r.height };
+            }
+          });
+          saveLayout();
+        }
+
+        // Expose for Settings scene to trigger directly
+        window.__enterTouchEditMode = enterEdit;
+        window.__exitTouchEditMode  = exitEdit;
+
+        if (editBtn)  editBtn.addEventListener('click', () => editMode ? exitEdit() : enterEdit());
+        if (doneBtn)  doneBtn.addEventListener('click', exitEdit);
+        if (resetBtn) resetBtn.addEventListener('click', () => {
+          layout.buttons = getDefaultLayout().buttons;
+          applyLayout();
+          saveLayout();
+        });
+
+        /* ─────────────────────────────────────────
+           DRAG — each button in edit mode
+           ───────────────────────────────────────── */
+        BTN_IDS.forEach((id) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+
+          let dragging = false;
+          let dragTid  = null;
+          let sx, sy, selX, selY;
+
+          function startDrag(cx, cy) {
+            dragging = true;
+            sx   = cx;
+            sy   = cy;
+            selX = parseFloat(el.style.left)  || 0;
+            selY = parseFloat(el.style.top)   || 0;
+            el.style.transition = 'none';
+          }
+
+          function moveDrag(cx, cy) {
+            if (!dragging) return;
+            let nx = selX + (cx - sx);
+            let ny = selY + (cy - sy);
+            const hw = parseFloat(el.style.width)  / 2;
+            const hh = parseFloat(el.style.height) / 2;
+            nx = Math.max(hw, Math.min(window.innerWidth  - hw, nx));
+            ny = Math.max(hh, Math.min(window.innerHeight - hh, ny));
+            el.style.left = nx + 'px';
+            el.style.top  = ny + 'px';
+          }
+
+          el.addEventListener('touchstart', (e) => {
+            if (!editMode) return;
+            if (e.target.classList.contains('tc-resize-handle')) return;
+            e.stopPropagation(); e.preventDefault();
+            if (dragTid === null) {
+              dragTid = e.changedTouches[0].identifier;
+              startDrag(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+            }
+          }, { passive: false });
+
+          el.addEventListener('touchmove', (e) => {
+            if (!editMode || !dragging) return;
+            e.preventDefault();
+            for (let t of e.changedTouches) {
+              if (t.identifier === dragTid) { moveDrag(t.clientX, t.clientY); break; }
+            }
+          }, { passive: false });
+
+          el.addEventListener('touchend', (e) => {
+            for (let t of e.changedTouches) {
+              if (t.identifier === dragTid) { dragTid = null; dragging = false; break; }
+            }
+          }, { passive: false });
+
+          // Desktop drag
+          el.addEventListener('mousedown', (e) => {
+            if (!editMode) return;
+            if (e.target.classList.contains('tc-resize-handle')) return;
+            e.preventDefault();
+            startDrag(e.clientX, e.clientY);
+          });
+
+          document.addEventListener('mousemove', (e) => {
+            if (dragging) moveDrag(e.clientX, e.clientY);
+          });
+          document.addEventListener('mouseup', () => { dragging = false; });
+        });
+
+        /* ─────────────────────────────────────────
+           RESIZE HANDLES
+           ───────────────────────────────────────── */
+        BTN_IDS.forEach((id) => {
+          const el     = document.getElementById(id);
+          if (!el) return;
+          const handle = el.querySelector('.tc-resize-handle');
+          if (!handle) return;
+
+          let resizing = false;
+          let rTid     = null;
+          let rx0, ry0, rw0, rh0;
+          const isSquare = (id === 'tc-dpad' || id === 'tc-a' || id === 'tc-b');
+
+          function startResize(cx, cy) {
+            resizing = true;
+            rx0 = cx; ry0 = cy;
+            rw0 = parseFloat(el.style.width);
+            rh0 = parseFloat(el.style.height);
+            el.style.transition = 'none';
+          }
+
+          function doResize(cx, cy) {
+            if (!resizing) return;
+            const dx = cx - rx0;
+            const dy = cy - ry0;
+            if (isSquare) {
+              const ns = Math.max(48, rw0 + (dx + dy) / 2 * 1.4);
+              el.style.width  = ns + 'px';
+              el.style.height = ns + 'px';
+            } else {
+              el.style.width  = Math.max(60, rw0 + dx) + 'px';
+              el.style.height = Math.max(30, rh0 + dy) + 'px';
+            }
+          }
+
+          handle.addEventListener('touchstart', (e) => {
+            if (!editMode) return;
+            e.stopPropagation(); e.preventDefault();
+            if (rTid === null) {
+              rTid = e.changedTouches[0].identifier;
+              startResize(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+            }
+          }, { passive: false });
+
+          handle.addEventListener('touchmove', (e) => {
+            if (!resizing) return;
+            e.preventDefault();
+            for (let t of e.changedTouches) {
+              if (t.identifier === rTid) { doResize(t.clientX, t.clientY); break; }
+            }
+          }, { passive: false });
+
+          handle.addEventListener('touchend', () => { rTid = null; resizing = false; });
+
+          handle.addEventListener('mousedown', (e) => {
+            if (!editMode) return;
+            e.stopPropagation(); e.preventDefault();
+            startResize(e.clientX, e.clientY);
+          });
+
+          document.addEventListener('mousemove', (e) => { if (resizing) doResize(e.clientX, e.clientY); });
+          document.addEventListener('mouseup',   () => { resizing = false; });
+        });
+
+        /* ─────────────────────────────────────────
+           FULLSCREEN
+           ───────────────────────────────────────── */
+        if (fsBtn) {
+          fsBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const d = document;
+            const el = document.documentElement;
+            if (!d.fullscreenElement && !d.webkitFullscreenElement) {
+              const fn = el.requestFullscreen || el.webkitRequestFullscreen;
+              if (fn) fn.call(el, { navigationUI: 'hide' });
+            } else {
+              const fn = d.exitFullscreen || d.webkitExitFullscreen;
+              if (fn) fn.call(d);
             }
           });
         }
-        
-        // Prevent scrolling/zooming
-        document.body.addEventListener('touchmove', function(e) {
+
+        /* ─────────────────────────────────────────
+           RE-APPLY ON RESIZE / ORIENTATION CHANGE
+           (percentages → pixels needs recalculating)
+           ───────────────────────────────────────── */
+        window.addEventListener('resize', applyLayout);
+        window.addEventListener('orientationchange', () => setTimeout(applyLayout, 150));
+
+        /* ─────────────────────────────────────────
+           PREVENT SCROLL / PINCH-ZOOM ON BODY
+           ───────────────────────────────────────── */
+        document.body.addEventListener('touchmove', (e) => {
           e.preventDefault();
         }, { passive: false });
-        
-        // Update controls on resize and orientation change
-        window.addEventListener('resize', updateControlsVisibility);
-        window.addEventListener('orientationchange', () => {
-          setTimeout(updateControlsVisibility, 100);
-        });
-        
-        document.addEventListener('fullscreenchange', () => {
-          setTimeout(updateControlsVisibility, 100);
-        });
-        document.addEventListener('webkitfullscreenchange', () => {
-          setTimeout(updateControlsVisibility, 100);
-        });
-        
-        // Initial setup
-        updateControlsVisibility();
-        
-        // Re-check periodically until canvas is available
-        const checkInterval = setInterval(() => {
-          const canvas = document.querySelector('#game-container canvas');
-          if (canvas) {
-            updateControlsVisibility();
-            clearInterval(checkInterval);
-          }
-        }, 200);
-        
-        setTimeout(() => clearInterval(checkInterval), 10000);
+
       })();
     </script>
   </body>
