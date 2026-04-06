@@ -683,6 +683,7 @@
 
           dpad.addEventListener('touchstart', (e) => {
             if (overlay.classList.contains('edit-mode')) return;
+            if (e.touches.length >= 2) return; // let pinch-to-zoom through
             e.preventDefault();
             if (touchId === null) {
               touchId = e.changedTouches[0].identifier;
@@ -692,6 +693,7 @@
 
           dpad.addEventListener('touchmove', (e) => {
             if (overlay.classList.contains('edit-mode')) return;
+            if (e.touches.length >= 2) return; // let pinch-to-zoom through
             e.preventDefault();
             for (let t of e.changedTouches) {
               if (t.identifier === touchId) { applyDirs(angle2dirs(t)); break; }
@@ -730,6 +732,7 @@
 
           function press(e) {
             if (overlay.classList.contains('edit-mode')) return;
+            if (e.touches && e.touches.length >= 2) return; // let pinch-to-zoom through
             e.preventDefault();
             window.virtualControlsState[key] = true;
             el.classList.add('pressed');
@@ -781,6 +784,7 @@
           }
           function press(e) {
             if (overlay.classList.contains('edit-mode')) return;
+            if (e.touches && e.touches.length >= 2) return; // let pinch-to-zoom through
             e.preventDefault();
             el.classList.add('pressed');
             dispatchSyntheticKey(currentCode(), true);

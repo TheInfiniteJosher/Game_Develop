@@ -142,6 +142,9 @@ const config = {
   },
   input: {
     gamepad: true, // Enable gamepad support
+    touch: {
+      capture: false, // Don't preventDefault on touches — lets browser handle pinch-to-zoom
+    },
   },
   physics: {
     default: "arcade",
