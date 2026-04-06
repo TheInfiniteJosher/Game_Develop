@@ -201,6 +201,10 @@ export class SettingsScene extends Phaser.Scene {
 
   createControlsPanel(centerX, centerY) {
     const startY = centerY - 80
+    const isTouchDevice = ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+    // Touch devices show an extra MAP BUTTONS button in the mobile row, so
+    // push the premium features section down to avoid overlap.
+    const premiumOffset = isTouchDevice ? 30 : 0
 
     // CONFIGURE CONTROLS BUTTON - opens detailed controls settings
     this.createControlsConfigButton(centerX, startY - 60)
@@ -209,7 +213,7 @@ export class SettingsScene extends Phaser.Scene {
     this.createMobileControlsRow(centerX, startY - 15)
 
     // Section header
-    const header = this.add.text(centerX, startY + 60, "Premium Features", {
+    const header = this.add.text(centerX, startY + 60 + premiumOffset, "Premium Features", {
       fontFamily: "RetroPixel",
       fontSize: "18px",
       color: "#ffffff"
@@ -217,7 +221,7 @@ export class SettingsScene extends Phaser.Scene {
     this.controlsContainer.add(header)
 
     // Description
-    const desc = this.add.text(centerX, startY + 85, "Unlockable movement enhancements", {
+    const desc = this.add.text(centerX, startY + 85 + premiumOffset, "Unlockable movement enhancements", {
       fontFamily: "RetroPixel",
       fontSize: "12px",
       color: "#888888"
@@ -227,7 +231,7 @@ export class SettingsScene extends Phaser.Scene {
     // Auto-Ricochet toggle
     this.createFeatureToggle(
       centerX,
-      startY + 140,
+      startY + 140 + premiumOffset,
       "AUTO-RICOCHET",
       "Hold jump while wall-sliding for turbo wall jumps",
       () => this.isAutoRicochetUnlocked(),
@@ -238,7 +242,7 @@ export class SettingsScene extends Phaser.Scene {
     // Spawn Shifting toggle
     this.createFeatureToggle(
       centerX,
-      startY + 225,
+      startY + 225 + premiumOffset,
       "SPAWN SHIFTING",
       "Press Q during gameplay to set respawn point",
       () => this.isSpawnShiftingUnlocked(),
@@ -248,7 +252,7 @@ export class SettingsScene extends Phaser.Scene {
 
     // Developer note if in dev mode
     if (DevModeManager.isDevMode()) {
-      const devNote = this.add.text(centerX, startY + 310, "🔧 DEV MODE: All features unlocked", {
+      const devNote = this.add.text(centerX, startY + 310 + premiumOffset, "🔧 DEV MODE: All features unlocked", {
         fontFamily: "RetroPixel",
         fontSize: "11px",
         color: "#ff00ff"
@@ -298,11 +302,12 @@ export class SettingsScene extends Phaser.Scene {
     )
     toggle.elements.forEach(el => this.controlsContainer.add(el))
 
-    // "Customise" hint button — only on touch devices
+    // Hint buttons — only on touch devices
     if (isTouchDevice) {
-      const hintBg = this.add.rectangle(centerX + 160, y + 38, 120, 22, 0x1a1a3a, 0.9)
+      // ✏ EDIT LAYOUT
+      const hintBg = this.add.rectangle(centerX + 100, y + 38, 112, 22, 0x1a1a3a, 0.9)
         .setStrokeStyle(1, 0x004477)
-      const hintText = this.add.text(centerX + 160, y + 38, "✏ EDIT LAYOUT", {
+      const hintText = this.add.text(centerX + 100, y + 38, "✏ EDIT LAYOUT", {
         fontFamily: "RetroPixel",
         fontSize: "9px",
         color: "#0088cc"
@@ -311,7 +316,6 @@ export class SettingsScene extends Phaser.Scene {
       this.controlsContainer.add(hintText)
       hintBg.setInteractive({ useHandCursor: true })
       hintBg.on("pointerdown", () => {
-        // Dismiss settings and enter edit mode
         if (typeof window.__enterTouchEditMode === 'function') {
           window.__enterTouchEditMode()
         }
@@ -325,13 +329,44 @@ export class SettingsScene extends Phaser.Scene {
         hintBg.setStrokeStyle(1, 0x004477)
         hintText.setColor("#0088cc")
       })
+
+      // 📱 MAP TOUCH BUTTONS
+      const mapBg = this.add.rectangle(centerX + 100, y + 65, 112, 22, 0x1a1a3a, 0.9)
+        .setStrokeStyle(1, 0x335500)
+      const mapText = this.add.text(centerX + 100, y + 65, "📱 MAP BUTTONS", {
+        fontFamily: "RetroPixel",
+        fontSize: "9px",
+        color: "#66cc22"
+      }).setOrigin(0.5)
+      this.controlsContainer.add(mapBg)
+      this.controlsContainer.add(mapText)
+      mapBg.setInteractive({ useHandCursor: true })
+      mapBg.on("pointerdown", () => {
+        this.scene.start("TouchMappingScene", {
+          returnScene: "SettingsScene",
+          returnData: {
+            returnScene: this.returnScene,
+            returnData: this.returnData,
+            gameSceneKey: this.gameSceneKey
+          }
+        })
+      })
+      mapBg.on("pointerover", () => {
+        mapBg.setStrokeStyle(1, 0x88ff33)
+        mapText.setColor("#99ff44")
+      })
+      mapBg.on("pointerout", () => {
+        mapBg.setStrokeStyle(1, 0x335500)
+        mapText.setColor("#66cc22")
+      })
     }
 
     // Separator line below the row
     const sep = this.add.graphics()
     sep.lineStyle(1, 0x222244, 0.8)
-    sep.moveTo(centerX - 230, y + 52)
-    sep.lineTo(centerX + 230, y + 52)
+    const sepY = isTouchDevice ? y + 82 : y + 52
+    sep.moveTo(centerX - 230, sepY)
+    sep.lineTo(centerX + 230, sepY)
     sep.strokePath()
     this.controlsContainer.add(sep)
   }

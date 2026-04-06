@@ -3,13 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="google-adsense-account" content="ca-pub-8959470748899668">
     <title>The Diminished Chord</title>
 
+    <script>
+      // Bootstrap window.TOUCH_MAPPING from localStorage before the game module loads.
+      // TouchButtonMapper.js will overwrite this after auth syncs from Supabase.
+      ;(function () {
+        var defaults = { a:'ArrowUp', b:'Space', x:'Semicolon', y:'Space', l:'Slash', r:'KeyQ', start:'Semicolon', select:'KeyR' }
+        try {
+          var saved = JSON.parse(localStorage.getItem('tdc_touch_mapping_v1') || '{}')
+          window.TOUCH_MAPPING = Object.assign({}, defaults, saved)
+        } catch (e) {
+          window.TOUCH_MAPPING = Object.assign({}, defaults)
+        }
+      })()
+    </script>
     <script type="module" src="/src/main.js"></script>
 
     <script
@@ -758,20 +771,25 @@
           }));
         }
 
-        function setupSyntheticBtn(id, keyCode) {
+        // mappingKey: key in window.TOUCH_MAPPING (e.g. 'x','y','l','r')
+        // fallbackCode: used if TOUCH_MAPPING not ready (should match default mapping)
+        function setupSyntheticBtn(id, mappingKey, fallbackCode) {
           const el = document.getElementById(id);
           if (!el) return;
+          function currentCode() {
+            return (window.TOUCH_MAPPING && window.TOUCH_MAPPING[mappingKey]) || fallbackCode;
+          }
           function press(e) {
             if (overlay.classList.contains('edit-mode')) return;
             e.preventDefault();
             el.classList.add('pressed');
-            dispatchSyntheticKey(keyCode, true);
+            dispatchSyntheticKey(currentCode(), true);
           }
           function release(e) {
             if (overlay.classList.contains('edit-mode')) return;
             e.preventDefault();
             el.classList.remove('pressed');
-            dispatchSyntheticKey(keyCode, false);
+            dispatchSyntheticKey(currentCode(), false);
           }
           el.addEventListener('touchstart',  press,   { passive: false });
           el.addEventListener('touchend',    release, { passive: false });
@@ -781,10 +799,10 @@
           el.addEventListener('mouseleave',  release);
         }
 
-        setupSyntheticBtn('tc-x', 'Semicolon');
-        setupSyntheticBtn('tc-y', 'Space');
-        setupSyntheticBtn('tc-l', 'Slash');
-        setupSyntheticBtn('tc-r', 'KeyQ');
+        setupSyntheticBtn('tc-x', 'x', 'Semicolon');
+        setupSyntheticBtn('tc-y', 'y', 'Space');
+        setupSyntheticBtn('tc-l', 'l', 'Slash');
+        setupSyntheticBtn('tc-r', 'r', 'KeyQ');
 
         /* ─────────────────────────────────────────
            EDIT MODE

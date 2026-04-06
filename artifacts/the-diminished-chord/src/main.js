@@ -106,6 +106,8 @@ import { TrackPublishScene } from "./TrackPublishScene.js"
 import { GameConfigScene } from "./GameConfigScene.js"
 import { SettingsScene } from "./SettingsScene.js"
 import { ControlsSettingsScene } from "./ControlsSettingsScene.js"
+import { TouchMappingScene } from "./TouchMappingScene.js"
+import { TouchButtonMapper } from "./TouchButtonMapper.js"
 import { GamepadManager } from "./GamepadManager.js"
 import { AudioAdminScene } from "./AudioAdminScene.js"
 import { MobileControlsScene } from "./MobileControlsScene.js"
@@ -251,6 +253,7 @@ const config = {
     GhostReplayScene,
     SettingsScene,
     ControlsSettingsScene,
+    TouchMappingScene,
     
     // Authentication & Profile
     SignInScene,
